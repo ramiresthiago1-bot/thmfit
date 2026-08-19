@@ -7,6 +7,7 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
 <div id="toast" class="toast"></div>
 
 <section id="loginScreen" class="login-screen">
@@ -14,73 +15,328 @@
     <div class="brand-mark">THM</div>
     <h1>THM FIT</h1>
     <p>Gestão inteligente para sua academia.</p>
+
     <form id="loginForm">
-      <label>E-mail<input id="loginEmail" type="email" required></label>
-      <label>Senha<input id="loginPassword" type="password" required></label>
+      <label>
+        E-mail
+        <input id="loginEmail" type="email" required>
+      </label>
+
+      <label>
+        Senha
+        <input id="loginPassword" type="password" required>
+      </label>
+
       <button class="primary full" type="submit">Entrar</button>
     </form>
-    <button id="demoBtn" class="secondary full" type="button">Abrir demonstração local</button>
+
+    <button id="demoBtn" class="secondary full" type="button">
+      Abrir demonstração local
+    </button>
+
     <small>O modo demonstração não grava dados no Supabase.</small>
   </div>
 </section>
 
 <div id="app" class="hidden">
+
 <header class="topbar">
   <div class="brand">THM FIT</div>
+
   <nav class="main-nav">
-    <button data-page="dashboard">Início</button><button data-page="alunos">Alunos</button>
-    <button data-page="financeiro">Financeiro</button><button data-page="acessos">Acessos</button>
-    <button data-page="comercial">Comercial</button><button data-page="treinos">Treinos</button>
-    <button data-page="avaliacoes">Avaliações</button><button data-page="relatorios">Relatórios</button>
+    <button data-page="dashboard">Início</button>
+    <button data-page="alunos">Alunos</button>
+    <button data-page="financeiro">Financeiro</button>
+    <button data-page="acessos">Acessos</button>
+    <button data-page="comercial">Comercial</button>
+    <button data-page="treinos">Treinos</button>
+    <button data-page="avaliacoes">Avaliações</button>
+    <button data-page="relatorios">Relatórios</button>
   </nav>
-  <div class="top-actions"><span id="userLabel"></span><button id="logoutBtn" class="icon-btn">↪</button></div>
+
+  <div class="top-actions">
+    <span id="userLabel"></span>
+    <button id="logoutBtn" class="icon-btn">↪</button>
+  </div>
 </header>
 
 <main class="content">
-<div class="breadcrumb">Dashboard <span>›</span> <strong id="pageTitle">Início</strong></div>
+
+<div class="breadcrumb">
+  Dashboard <span>›</span> <strong id="pageTitle">Início</strong>
+</div>
 
 <section id="dashboardPage" class="page">
-  <div class="page-heading"><div><h2>Dashboard</h2><p>Visão geral da academia.</p></div><button class="primary" data-page="alunos">+ Novo aluno</button></div>
-  <div class="stats-grid">
-    <div class="stat"><span>👥</span><b id="statAlunos">0</b><small>Alunos ativos</small></div>
-    <div class="stat"><span>💳</span><b id="statFinanceiro">0</b><small>Registros financeiros</small></div>
-    <div class="stat"><span>🚪</span><b id="statAcessos">0</b><small>Acessos registrados</small></div>
-    <div class="stat"><span>🏋️</span><b id="statTreinos">0</b><small>Treinos cadastrados</small></div>
+
+  <div class="page-heading">
+    <div>
+      <h2>Dashboard</h2>
+      <p>Visão geral da academia.</p>
+    </div>
+
+    <button class="primary" data-page="alunos">
+      + Novo aluno
+    </button>
   </div>
-  <div class="panel"><div class="panel-title">Últimos alunos</div><div id="recentStudents"></div></div>
+
+  <div class="stats-grid">
+    <div class="stat">
+      <span>👥</span>
+      <b id="statAlunos">0</b>
+      <small>Alunos ativos</small>
+    </div>
+
+    <div class="stat">
+      <span>💳</span>
+      <b id="statFinanceiro">0</b>
+      <small>Registros financeiros</small>
+    </div>
+
+    <div class="stat">
+      <span>🚪</span>
+      <b id="statAcessos">0</b>
+      <small>Acessos registrados</small>
+    </div>
+
+    <div class="stat">
+      <span>🏋️</span>
+      <b id="statTreinos">0</b>
+      <small>Treinos cadastrados</small>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Últimos alunos</div>
+    <div id="recentStudents"></div>
+  </div>
+
 </section>
 
 <section id="alunosPage" class="page hidden">
-  <div class="page-heading"><div><h2>Alunos</h2><p>Cadastro e acompanhamento.</p></div><button id="newStudentBtn" class="primary">+ Novo aluno</button></div>
-  <div class="toolbar"><input id="studentSearch" type="search" placeholder="🔎 Buscar por nome, CPF ou telefone"><select id="studentStatus"><option value="todos">Todos</option><option value="ativo">Ativos</option><option value="inativo">Inativos</option></select></div>
-  <div class="panel"><div id="studentsTable" class="table-wrap"></div></div>
+
+  <div class="page-heading">
+    <div>
+      <h2>Alunos</h2>
+      <p>Cadastro e acompanhamento.</p>
+    </div>
+
+    <button id="newStudentBtn" class="primary">
+      + Novo aluno
+    </button>
+  </div>
+
+  <div class="toolbar">
+    <input
+      id="studentSearch"
+      type="search"
+      placeholder="🔎 Buscar por nome, CPF ou telefone"
+    >
+
+    <select id="studentStatus">
+      <option value="todos">Todos</option>
+      <option value="ativo">Ativos</option>
+      <option value="inativo">Inativos</option>
+    </select>
+  </div>
+
+  <div class="panel">
+    <div id="studentsTable" class="table-wrap"></div>
+  </div>
+
 </section>
 
-<section id="financeiroPage" class="page hidden"><div class="placeholder"><h2>Financeiro</h2><p>Módulo preparado para mensalidades, cobranças, despesas e inadimplência.</p></div></section>
-<section id="acessosPage" class="page hidden"><div class="placeholder"><h2>Acessos</h2><p>Módulo preparado para integração com Topdata e catraca facial.</p></div></section>
-<section id="comercialPage" class="page hidden"><div class="placeholder"><h2>Comercial</h2><p>Módulo preparado para leads, contatos, vendas e conversões.</p></div></section>
-<section id="treinosPage" class="page hidden"><div class="placeholder"><h2>Treinos</h2><p>Módulo preparado para fichas, exercícios e geração assistida por IA.</p></div></section>
-<section id="avaliacoesPage" class="page hidden"><div class="placeholder"><h2>Avaliações</h2><p>Módulo preparado para Tanita BC-601, histórico e evolução.</p></div></section>
-<section id="relatoriosPage" class="page hidden"><div class="placeholder"><h2>Relatórios</h2><p>Módulo preparado para indicadores da academia.</p></div></section>
+<section id="financeiroPage" class="page hidden">
+  <div class="placeholder">
+    <h2>Financeiro</h2>
+    <p>Módulo preparado para mensalidades, cobranças, despesas e inadimplência.</p>
+  </div>
+</section>
+
+<section id="acessosPage" class="page hidden">
+  <div class="placeholder">
+    <h2>Acessos</h2>
+    <p>Módulo preparado para integração com Topdata e catraca facial.</p>
+  </div>
+</section>
+
+<section id="comercialPage" class="page hidden">
+  <div class="placeholder">
+    <h2>Comercial</h2>
+    <p>Módulo preparado para leads, contatos, vendas e conversões.</p>
+  </div>
+</section>
+
+<section id="treinosPage" class="page hidden">
+  <div class="placeholder">
+    <h2>Treinos</h2>
+    <p>Módulo preparado para fichas, exercícios e geração assistida por IA.</p>
+  </div>
+</section>
+
+<section id="avaliacoesPage" class="page hidden">
+  <div class="placeholder">
+    <h2>Avaliações</h2>
+    <p>Módulo preparado para Tanita BC-601, histórico e evolução.</p>
+  </div>
+</section>
+
+<section id="relatoriosPage" class="page hidden">
+  <div class="placeholder">
+    <h2>Relatórios</h2>
+    <p>Módulo preparado para indicadores da academia.</p>
+  </div>
+</section>
+
 </main>
 </div>
 
+<!-- MODAL DO ALUNO -->
+
 <div id="studentModal" class="modal hidden">
-<div class="modal-card">
-<div class="modal-head"><div><h2 id="modalTitle">Novo aluno</h2><p>Cadastre o aluno no banco do THM.</p></div><button id="closeModal" class="icon-btn">×</button></div>
-<form id="studentForm" class="form-grid">
-<input id="studentId" type="hidden">
-<label class="span-2">Nome completo *<input id="studentName" required maxlength="150"></label>
-<label>CPF<input id="studentCpf" maxlength="20"></label>
-<label>Telefone<input id="studentPhone" maxlength="30"></label>
-<label>Data de nascimento<input id="studentBirth" type="date"></label>
-<label>Objetivo<select id="studentGoal"><option value="">Selecione</option><option>Hipertrofia</option><option>Emagrecimento</option><option>Condicionamento</option><option>Força</option><option>Qualidade de vida</option><option>Reabilitação</option></select></label>
-<label>Plano<input id="studentPlan"></label>
-<label>Status<select id="studentStatusForm"><option value="ativo">Ativo</option><option value="inativo">Inativo</option></select></label>
-<div class="form-actions span-2"><button id="cancelModal" class="secondary" type="button">Cancelar</button><button class="primary" type="submit">Salvar aluno</button></div>
-</form></div></div>
+
+  <div class="modal-card">
+
+    <div class="modal-head">
+      <div>
+        <h2 id="modalTitle">Novo aluno</h2>
+        <p>Cadastre o aluno no banco do THM.</p>
+      </div>
+
+      <button id="closeModal" class="icon-btn">×</button>
+    </div>
+
+    <form id="studentForm" class="form-grid">
+
+      <input id="studentId" type="hidden">
+
+      <!-- DADOS PESSOAIS -->
+
+      <label class="span-2">
+        Nome completo *
+        <input id="studentName" required maxlength="150">
+      </label>
+
+      <label>
+        CPF
+        <input id="studentCpf" maxlength="20">
+      </label>
+
+      <label>
+        Telefone
+        <input id="studentPhone" maxlength="30">
+      </label>
+
+      <label>
+        E-mail
+        <input id="studentEmail" type="email" maxlength="150">
+      </label>
+
+      <label>
+        Data de nascimento
+        <input id="studentBirth" type="date">
+      </label>
+
+      <!-- ENDEREÇO -->
+
+      <label>
+        CEP
+        <input id="studentCep" maxlength="10">
+      </label>
+
+      <label class="span-2">
+        Logradouro
+        <input id="studentLogradouro" maxlength="200">
+      </label>
+
+      <label>
+        Número
+        <input id="studentNumero" maxlength="20">
+      </label>
+
+      <label>
+        Complemento
+        <input id="studentComplemento" maxlength="100">
+      </label>
+
+      <label>
+        Bairro
+        <input id="studentBairro" maxlength="100">
+      </label>
+
+      <label>
+        Cidade
+        <input id="studentCidade" maxlength="100">
+      </label>
+
+      <label>
+        Estado
+        <input id="studentEstado" maxlength="2">
+      </label>
+
+      <!-- RESPONSÁVEL -->
+
+      <label class="span-2">
+        Nome do responsável
+        <input id="studentResponsibleName" maxlength="150">
+      </label>
+
+      <label>
+        Telefone do responsável
+        <input id="studentResponsiblePhone" maxlength="30">
+      </label>
+
+      <!-- INFORMAÇÕES DA ACADEMIA -->
+
+      <label>
+        Objetivo
+        <select id="studentGoal">
+          <option value="">Selecione</option>
+          <option>Hipertrofia</option>
+          <option>Emagrecimento</option>
+          <option>Condicionamento</option>
+          <option>Força</option>
+          <option>Qualidade de vida</option>
+          <option>Reabilitação</option>
+        </select>
+      </label>
+
+      <label>
+        Plano
+        <input id="studentPlan">
+      </label>
+
+      <label>
+        Status
+        <select id="studentStatusForm">
+          <option value="ativo">Ativo</option>
+          <option value="inativo">Inativo</option>
+        </select>
+      </label>
+
+      <label class="span-2">
+        Observações
+        <textarea id="studentNotes" rows="4" maxlength="1000"></textarea>
+      </label>
+
+      <div class="form-actions span-2">
+        <button id="cancelModal" class="secondary" type="button">
+          Cancelar
+        </button>
+
+        <button class="primary" type="submit">
+          Salvar aluno
+        </button>
+      </div>
+
+    </form>
+
+  </div>
+
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="config.js"></script>
 <script src="app.js"></script>
-</body></html>
+
+</body>
+</html>
