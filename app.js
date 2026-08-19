@@ -1,85 +1,98 @@
-const {createClient}=window.supabase;
+const { createClient } = window.supabase;
 
-const client=createClient(
+const client = createClient(
   THM_CONFIG.SUPABASE_URL,
   THM_CONFIG.SUPABASE_PUBLISHABLE_KEY,
   {
-    auth:{
-      persistSession:true,
-      autoRefreshToken:true,
-      detectSessionInUrl:true
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true
     }
   }
 );
 
-let demoMode=false;
-let studentsCache=[];
+let demoMode = false;
+let studentsCache = [];
 
-const $=id=>document.getElementById(id);
+const $ = id => document.getElementById(id);
 
-function toast(m,e=false){
-  const x=$("toast");
-  x.textContent=m;
-  x.className=`toast show${e?" error":""}`;
-  setTimeout(()=>x.className="toast",3000);
+function toast(message, error = false) {
+  const element = $("toast");
+
+  element.textContent = message;
+  element.className = `toast show${error ? " error" : ""}`;
+
+  setTimeout(() => {
+    element.className = "toast";
+  }, 3000);
 }
 
-function esc(v){
-  return String(v??"")
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
+function esc(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
 }
 
-function showApp(label){
+function showApp(label) {
   $("loginScreen").classList.add("hidden");
   $("app").classList.remove("hidden");
-  $("userLabel").textContent=label;
+
+  $("userLabel").textContent = label;
+
   goTo("dashboard");
   loadAll();
 }
 
-function goTo(page){
+function goTo(page) {
 
-  document.querySelectorAll(".page")
-    .forEach(x=>x.classList.add("hidden"));
+  document
+    .querySelectorAll(".page")
+    .forEach(pageElement => {
+      pageElement.classList.add("hidden");
+    });
 
   $(`${page}Page`)?.classList.remove("hidden");
 
-  document.querySelectorAll("[data-page]")
-    .forEach(x=>{
-      x.classList.toggle(
+  document
+    .querySelectorAll("[data-page]")
+    .forEach(button => {
+      button.classList.toggle(
         "active",
-        x.dataset.page===page
+        button.dataset.page === page
       );
     });
 
-  $("pageTitle").textContent={
-    dashboard:"Início",
-    alunos:"Alunos",
-    financeiro:"Financeiro",
-    acessos:"Acessos",
-    comercial:"Comercial",
-    treinos:"Treinos",
-    avaliacoes:"Avaliações",
-    relatorios:"Relatórios"
-  }[page]||page;
+  const titles = {
+    dashboard: "Início",
+    alunos: "Alunos",
+    financeiro: "Financeiro",
+    acessos: "Acessos",
+    comercial: "Comercial",
+    treinos: "Treinos",
+    avaliacoes: "Avaliações",
+    relatorios: "Relatórios"
+  };
 
-  if(page==="alunos"){
+  $("pageTitle").textContent =
+    titles[page] || page;
+
+  if (page === "alunos") {
     renderStudents();
   }
 }
 
-async function loadAll(){
+async function loadAll() {
 
-  if(demoMode){
+  if (demoMode) {
 
-    studentsCache=JSON.parse(
+    studentsCache = JSON.parse(
       localStorage.getItem(
         "thm_demo_students"
-      )||"[]"
+      ) || "[]"
     );
 
     updateStats();
@@ -89,131 +102,181 @@ async function loadAll(){
     return;
   }
 
-  const [s,f,a,t]=await Promise.all([
+  const [
+    students,
+    financial,
+    accesses,
+    workouts
+  ] = await Promise.all([
 
-    client.from("alunos").select(`
-      id,
-      nome,
-      cpf,
-      telefone,
-      data_nascimento,
-      objetivo,
-      plano,
-      status,
-      ciclo,
-      criado_em,
-      responsavel,
-      telefone_responsavel,
-      cep,
-      estado,
-      rua,
-      numero,
-      complemento,
-      bairro,
-      cidade
-    `).order("nome"),
+    client
+      .from("alunos")
+      .select(`
+        id,
+        nome,
+        cpf,
+        telefone,
+        data_nascimento,
+        objetivo,
+        plano,
+        status,
+        ciclo,
+        criado_em,
+        matricula,
+        data_matricula,
+        data_inicio,
+        observacoes,
+        responsavel,
+        telefone_responsavel,
+        cep,
+        estado,
+        rua,
+        numero,
+        complemento,
+        bairro,
+        cidade
+      `)
+      .order("nome"),
 
-    client.from("financeiro")
-      .select("id",{count:"exact",head:true}),
+    client
+      .from("financeiro")
+      .select("id", {
+        count: "exact",
+        head: true
+      }),
 
-    client.from("acessos")
-      .select("id",{count:"exact",head:true}),
+    client
+      .from("acessos")
+      .select("id", {
+        count: "exact",
+        head: true
+      }),
 
-    client.from("treinos")
-      .select("id",{count:"exact",head:true})
+    client
+      .from("treinos")
+      .select("id", {
+        count: "exact",
+        head: true
+      })
+
   ]);
 
-  if(s.error){
+  if (students.error) {
     return toast(
-      s.error.message,
+      students.error.message,
       true
     );
   }
 
-  studentsCache=s.data||[];
+  studentsCache =
+    students.data || [];
 
-  $("statAlunos").textContent=
+  $("statAlunos").textContent =
     studentsCache.filter(
-      x=>x.status==="ativo"
+      student =>
+        student.status === "ativo"
     ).length;
 
-  $("statFinanceiro").textContent=
-    f.count??0;
+  $("statFinanceiro").textContent =
+    financial.count ?? 0;
 
-  $("statAcessos").textContent=
-    a.count??0;
+  $("statAcessos").textContent =
+    accesses.count ?? 0;
 
-  $("statTreinos").textContent=
-    t.count??0;
+  $("statTreinos").textContent =
+    workouts.count ?? 0;
 
   renderStudents();
   renderRecent();
 }
 
-function updateStats(){
+function updateStats() {
 
-  $("statAlunos").textContent=
+  $("statAlunos").textContent =
     studentsCache.filter(
-      x=>x.status==="ativo"
+      student =>
+        student.status === "ativo"
     ).length;
 
   [
     "statFinanceiro",
     "statAcessos",
     "statTreinos"
-  ].forEach(
-    id=>$(id).textContent="—"
-  );
+  ].forEach(id => {
+    $(id).textContent = "—";
+  });
 }
 
-function renderRecent(){
+function renderRecent() {
 
-  $("recentStudents").innerHTML=
-    studentsCache.slice(0,5).map(s=>`
+  $("recentStudents").innerHTML =
+    studentsCache
+      .slice(0, 5)
+      .map(student => `
 
-      <div class="simple-item">
+        <div class="simple-item">
 
-        <span>
-          ${esc(s.nome)}
-        </span>
+          <span>
+            ${esc(student.nome)}
+          </span>
 
-        <span class="status ${s.status}">
-          ${esc(s.status)}
-        </span>
+          <span class="status ${student.status}">
+            ${esc(student.status)}
+          </span>
 
-      </div>
+        </div>
 
-    `).join("")
-    ||
-    `<div class="simple-item">
-      Nenhum aluno cadastrado.
-    </div>`;
+      `)
+      .join("")
+      ||
+      `
+        <div class="simple-item">
+          Nenhum aluno cadastrado.
+        </div>
+      `;
 }
 
-function renderStudents(){
+function renderStudents() {
 
-  const q=
-    ($("studentSearch")?.value||"")
+  const search =
+    ($("studentSearch")?.value || "")
       .toLowerCase();
 
-  const st=
-    $("studentStatus")?.value||"todos";
+  const status =
+    $("studentStatus")?.value ||
+    "todos";
 
-  const rows=studentsCache.filter(s=>
-    (st==="todos"||s.status===st) &&
-    [s.nome,s.cpf,s.telefone]
-      .join(" ")
-      .toLowerCase()
-      .includes(q)
-  );
+  const rows =
+    studentsCache.filter(student => {
 
-  $("studentsTable").innerHTML=`
+      const matchesStatus =
+        status === "todos" ||
+        student.status === status;
+
+      const searchText = [
+        student.nome,
+        student.cpf,
+        student.telefone,
+        student.matricula
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return (
+        matchesStatus &&
+        searchText.includes(search)
+      );
+    });
+
+  $("studentsTable").innerHTML = `
 
     <table class="table">
 
       <thead>
 
         <tr>
+
+          <th>Matrícula</th>
           <th>Nome</th>
           <th>CPF</th>
           <th>Telefone</th>
@@ -221,6 +284,7 @@ function renderStudents(){
           <th>Status</th>
           <th>Ciclo</th>
           <th>Ações</th>
+
         </tr>
 
       </thead>
@@ -228,67 +292,103 @@ function renderStudents(){
       <tbody>
 
         ${
-          rows.map(s=>`
+          rows
+            .map(student => `
 
-            <tr>
+              <tr>
 
-              <td>
-                <strong>
-                  ${esc(s.nome)}
-                </strong>
-              </td>
+                <td>
+                  ${esc(
+                    student.matricula ||
+                    "—"
+                  )}
+                </td>
 
-              <td>
-                ${esc(s.cpf||"—")}
-              </td>
+                <td>
+                  <strong>
+                    ${esc(student.nome)}
+                  </strong>
+                </td>
 
-              <td>
-                ${esc(s.telefone||"—")}
-              </td>
+                <td>
+                  ${esc(
+                    student.cpf ||
+                    "—"
+                  )}
+                </td>
 
-              <td>
-                ${esc(s.plano||"—")}
-              </td>
+                <td>
+                  ${esc(
+                    student.telefone ||
+                    "—"
+                  )}
+                </td>
 
-              <td>
+                <td>
+                  ${esc(
+                    student.plano ||
+                    "—"
+                  )}
+                </td>
 
-                <span class="status ${s.status}">
-                  ${esc(s.status)}
-                </span>
+                <td>
 
-              </td>
-
-              <td>
-                ${s.ciclo??1}
-              </td>
-
-              <td>
-
-                <button
-                  class="mini"
-                  data-edit="${s.id}"
-                >
-                  Editar
-                </button>
-
-                ${
-                  s.status==="inativo"
-                  ?
-                  `<button
-                    class="mini"
-                    data-reuse="${s.id}"
+                  <span
+                    class="status ${student.status}"
                   >
-                    ♻ Reaproveitar
-                  </button>`
-                  :
-                  ""
-                }
+                    ${esc(student.status)}
+                  </span>
 
-              </td>
+                </td>
 
-            </tr>
+                <td>
+                  ${student.ciclo ?? 1}
+                </td>
 
-          `).join("")
+                <td>
+
+                  <button
+                    class="mini"
+                    data-edit="${student.id}"
+                  >
+                    Editar
+                  </button>
+
+                  ${
+                    student.status === "inativo"
+                      ?
+                      `
+                        <button
+                          class="mini"
+                          data-reuse="${student.id}"
+                        >
+                          ♻ Reaproveitar
+                        </button>
+                      `
+                      :
+                      ""
+                  }
+
+                </td>
+
+              </tr>
+
+            `)
+            .join("")
+        }
+
+        ${
+          rows.length === 0
+            ?
+            `
+              <tr>
+                <td colspan="8">
+                  Nenhum aluno encontrado.
+                </td>
+              </tr>
+            `
+            :
+            ""
         }
 
       </tbody>
@@ -296,107 +396,133 @@ function renderStudents(){
     </table>
   `;
 
-  document.querySelectorAll(
-    "[data-edit]"
-  ).forEach(
-    b=>b.onclick=()=>{
-      openStudent(b.dataset.edit);
-    }
-  );
+  document
+    .querySelectorAll("[data-edit]")
+    .forEach(button => {
 
-  document.querySelectorAll(
-    "[data-reuse]"
-  ).forEach(
-    b=>b.onclick=()=>{
-      reuseStudent(b.dataset.reuse);
-    }
-  );
+      button.onclick = () => {
+        openStudent(
+          button.dataset.edit
+        );
+      };
+
+    });
+
+  document
+    .querySelectorAll("[data-reuse]")
+    .forEach(button => {
+
+      button.onclick = () => {
+        reuseStudent(
+          button.dataset.reuse
+        );
+      };
+
+    });
 }
 
-function closeModal(){
+function closeModal() {
 
   $("studentModal")
     .classList.add("hidden");
 
   $("studentForm").reset();
 
-  $("studentId").value="";
+  $("studentId").value = "";
 }
 
-function openStudent(id){
+function openStudent(id) {
 
-  const s=
+  const student =
     studentsCache.find(
-      x=>x.id===id
+      item => item.id === id
     );
 
-  if(!s)return;
+  if (!student) return;
 
-  $("studentId").value=s.id;
+  $("studentId").value =
+    student.id;
 
-  $("studentName").value=
-    s.nome||"";
+  $("studentMatricula").value =
+    student.matricula || "";
 
-  $("studentCpf").value=
-    s.cpf||"";
+  $("studentName").value =
+    student.nome || "";
 
-  $("studentPhone").value=
-    s.telefone||"";
+  $("studentCpf").value =
+    student.cpf || "";
 
-  $("studentBirth").value=
-    s.data_nascimento||"";
+  $("studentPhone").value =
+    student.telefone || "";
 
-  $("studentGoal").value=
-    s.objetivo||"";
+  $("studentBirth").value =
+    student.data_nascimento || "";
 
-  $("studentPlan").value=
-    s.plano||"";
+  $("studentGoal").value =
+    student.objetivo || "";
 
-  $("studentStatusForm").value=
-    s.status||"ativo";
+  $("studentPlan").value =
+    student.plano || "";
 
-  $("studentResponsavel").value=
-    s.responsavel||"";
+  $("studentStatusForm").value =
+    student.status || "ativo";
 
-  $("studentTelefoneResponsavel").value=
-    s.telefone_responsavel||"";
+  $("studentDataMatricula").value =
+    student.data_matricula || "";
 
-  $("studentCep").value=
-    s.cep||"";
+  $("studentDataInicio").value =
+    student.data_inicio || "";
 
-  $("studentEstado").value=
-    s.estado||"";
+  $("studentResponsavel").value =
+    student.responsavel || "";
 
-  $("studentRua").value=
-    s.rua||"";
+  $("studentTelefoneResponsavel").value =
+    student.telefone_responsavel || "";
 
-  $("studentNumero").value=
-    s.numero||"";
+  $("studentCep").value =
+    student.cep || "";
 
-  $("studentComplemento").value=
-    s.complemento||"";
+  $("studentEstado").value =
+    student.estado || "";
 
-  $("studentBairro").value=
-    s.bairro||"";
+  $("studentRua").value =
+    student.rua || "";
 
-  $("studentCidade").value=
-    s.cidade||"";
+  $("studentNumero").value =
+    student.numero || "";
 
-  $("modalTitle").textContent=
+  $("studentComplemento").value =
+    student.complemento || "";
+
+  $("studentBairro").value =
+    student.bairro || "";
+
+  $("studentCidade").value =
+    student.cidade || "";
+
+  $("studentObservacoes").value =
+    student.observacoes || "";
+
+  $("modalTitle").textContent =
     "Editar aluno";
 
   $("studentModal")
     .classList.remove("hidden");
 }
 
-async function saveStudent(e){
+async function saveStudent(event) {
 
-  e.preventDefault();
+  event.preventDefault();
 
-  const id=
+  const id =
     $("studentId").value;
 
-  const p={
+  const data = {
+
+    matricula:
+      $("studentMatricula")
+        .value
+        .trim() || null,
 
     nome:
       $("studentName")
@@ -406,108 +532,132 @@ async function saveStudent(e){
     cpf:
       $("studentCpf")
         .value
-        .trim()||null,
+        .trim() || null,
 
     telefone:
       $("studentPhone")
         .value
-        .trim()||null,
+        .trim() || null,
 
     data_nascimento:
       $("studentBirth")
-        .value||null,
+        .value || null,
 
     objetivo:
       $("studentGoal")
-        .value||null,
+        .value || null,
 
     plano:
       $("studentPlan")
         .value
-        .trim()||null,
+        .trim() || null,
 
     status:
       $("studentStatusForm")
         .value,
 
+    data_matricula:
+      $("studentDataMatricula")
+        .value || null,
+
+    data_inicio:
+      $("studentDataInicio")
+        .value || null,
+
     responsavel:
       $("studentResponsavel")
         .value
-        .trim()||null,
+        .trim() || null,
 
     telefone_responsavel:
       $("studentTelefoneResponsavel")
         .value
-        .trim()||null,
+        .trim() || null,
 
     cep:
       $("studentCep")
         .value
-        .trim()||null,
+        .trim() || null,
 
     estado:
       $("studentEstado")
         .value
         .trim()
-        .toUpperCase()||null,
+        .toUpperCase() || null,
 
     rua:
       $("studentRua")
         .value
-        .trim()||null,
+        .trim() || null,
 
     numero:
       $("studentNumero")
         .value
-        .trim()||null,
+        .trim() || null,
 
     complemento:
       $("studentComplemento")
         .value
-        .trim()||null,
+        .trim() || null,
 
     bairro:
       $("studentBairro")
         .value
-        .trim()||null,
+        .trim() || null,
 
     cidade:
       $("studentCidade")
         .value
-        .trim()||null
+        .trim() || null,
+
+    observacoes:
+      $("studentObservacoes")
+        .value
+        .trim() || null
   };
 
-  if(!p.nome){
+  if (!data.nome) {
+
     return toast(
       "Informe o nome.",
       true
     );
   }
 
-  if(demoMode){
+  if (demoMode) {
 
-    if(id){
+    if (id) {
 
-      studentsCache=
-        studentsCache.map(s=>
-          s.id===id
-          ?
-          {...s,...p}
-          :
-          s
+      studentsCache =
+        studentsCache.map(
+          student =>
+            student.id === id
+              ?
+              {
+                ...student,
+                ...data
+              }
+              :
+              student
         );
 
-    }else{
+    } else {
 
-      studentsCache=[
+      studentsCache = [
+
         {
-          id:crypto.randomUUID(),
-          ...p,
-          ciclo:1,
+          id: crypto.randomUUID(),
+
+          ...data,
+
+          ciclo: 1,
+
           criado_em:
             new Date().toISOString()
         },
+
         ...studentsCache
+
       ];
     }
 
@@ -529,31 +679,32 @@ async function saveStudent(e){
     );
   }
 
-  const r=id
+  const result = id
 
     ?
 
-    await client
-      .from("alunos")
-      .update(p)
-      .eq("id",id)
-      .select()
-      .single()
+      await client
+        .from("alunos")
+        .update(data)
+        .eq("id", id)
+        .select()
+        .single()
 
     :
 
-    await client
-      .from("alunos")
-      .insert({
-        ...p,
-        ciclo:1
-      })
-      .select()
-      .single();
+      await client
+        .from("alunos")
+        .insert({
+          ...data,
+          ciclo: 1
+        })
+        .select()
+        .single();
 
-  if(r.error){
+  if (result.error) {
+
     return toast(
-      r.error.message,
+      result.error.message,
       true
     );
   }
@@ -564,70 +715,78 @@ async function saveStudent(e){
 
   toast(
     id
-    ?
-    "Aluno atualizado."
-    :
-    "Aluno cadastrado com sucesso."
+      ?
+      "Aluno atualizado."
+      :
+      "Aluno cadastrado com sucesso."
   );
 }
 
-async function reuseStudent(id){
+async function reuseStudent(id) {
 
-  const old=
+  const oldStudent =
     studentsCache.find(
-      x=>x.id===id
+      student =>
+        student.id === id
     );
 
-  if(!old)return;
+  if (!oldStudent) return;
 
-  if(
+  if (
     !confirm(
-      `Reaproveitar o cadastro de "${old.nome}"? O histórico anterior será preservado.`
+      `Reaproveitar o cadastro de "${oldStudent.nome}"? O histórico anterior será preservado.`
     )
-  ){
+  ) {
     return;
   }
 
-  const name=
+  const name =
     prompt(
       "Nome do novo aluno:"
     );
 
-  if(!name?.trim())return;
+  if (!name?.trim()) return;
 
-  const p={
+  const data = {
 
-    nome:name.trim(),
+    matricula: null,
 
-    cpf:null,
-    telefone:null,
-    data_nascimento:null,
+    nome: name.trim(),
 
-    objetivo:null,
-    plano:null,
+    cpf: null,
+    telefone: null,
+    data_nascimento: null,
 
-    status:"ativo",
+    objetivo: null,
+    plano: null,
 
-    responsavel:null,
-    telefone_responsavel:null,
+    status: "ativo",
 
-    cep:null,
-    estado:null,
-    rua:null,
-    numero:null,
-    complemento:null,
-    bairro:null,
-    cidade:null,
+    data_matricula: null,
+    data_inicio: null,
+
+    responsavel: null,
+    telefone_responsavel: null,
+
+    cep: null,
+    estado: null,
+    rua: null,
+    numero: null,
+    complemento: null,
+    bairro: null,
+    cidade: null,
+
+    observacoes: null,
 
     ciclo:
-      (old.ciclo||1)+1
+      (oldStudent.ciclo || 1) + 1
   };
 
-  if(demoMode){
+  if (demoMode) {
 
     studentsCache.unshift({
-      id:crypto.randomUUID(),
-      ...p
+      id: crypto.randomUUID(),
+      ...data
     });
 
     localStorage.setItem(
@@ -646,14 +805,15 @@ async function reuseStudent(id){
     );
   }
 
-  const r=
+  const result =
     await client
       .from("alunos")
-      .insert(p);
+      .insert(data);
 
-  if(r.error){
+  if (result.error) {
+
     return toast(
-      r.error.message,
+      result.error.message,
       true
     );
   }
@@ -665,63 +825,62 @@ async function reuseStudent(id){
   );
 }
 
-async function buscarCep(){
+async function buscarCep() {
 
-  const campo=
+  const cepInput =
     $("studentCep");
 
-  if(!campo)return;
+  if (!cepInput) return;
 
-  const cep=
-    campo.value
-      .replace(/\D/g,"");
+  const cep =
+    cepInput.value
+      .replace(/\D/g, "");
 
-  if(cep.length!==8)return;
+  if (cep.length !== 8) {
+    return;
+  }
 
-  campo.value=
-    cep.substring(0,5)+
-    "-"+
+  cepInput.value =
+    cep.substring(0, 5) +
+    "-" +
     cep.substring(5);
 
-  try{
+  try {
 
-    $("studentRua").value="";
-    $("studentBairro").value="";
-    $("studentCidade").value="";
-    $("studentEstado").value="";
-
-    const response=
+    const response =
       await fetch(
         `https://viacep.com.br/ws/${cep}/json/`
       );
 
-    if(!response.ok){
+    if (!response.ok) {
       throw new Error(
-        "Não foi possível consultar o CEP."
+        "Erro na consulta."
       );
     }
 
-    const data=
+    const data =
       await response.json();
 
-    if(data.erro){
+    if (data.erro) {
+
       return toast(
         "CEP não encontrado.",
         true
       );
     }
 
-    $("studentRua").value=
-      data.logradouro||"";
+    $("studentRua").value =
+      data.logradouro || "";
 
-    $("studentBairro").value=
-      data.bairro||"";
+    $("studentBairro").value =
+      data.bairro || "";
 
-    $("studentCidade").value=
-      data.localidade||"";
+    $("studentCidade").value =
+      data.localidade || "";
 
-    $("studentEstado").value=
-      (data.uf||"").toUpperCase();
+    $("studentEstado").value =
+      (data.uf || "")
+        .toUpperCase();
 
     $("studentNumero").focus();
 
@@ -729,49 +888,55 @@ async function buscarCep(){
       "Endereço encontrado."
     );
 
-  }catch(error){
+  } catch (error) {
+
+    console.error(error);
 
     toast(
       "Não foi possível consultar o CEP.",
       true
     );
-
-    console.error(error);
   }
 }
 
-function formatCep(e){
+function formatCep(event) {
 
-  let v=
-    e.target.value
-      .replace(/\D/g,"");
+  let value =
+    event.target.value
+      .replace(/\D/g, "");
 
-  if(v.length>8){
-    v=v.substring(0,8);
+  if (value.length > 8) {
+    value =
+      value.substring(0, 8);
   }
 
-  if(v.length>5){
+  if (value.length > 5) {
 
-    v=
-      v.substring(0,5)+
-      "-"+
-      v.substring(5);
+    value =
+      value.substring(0, 5) +
+      "-" +
+      value.substring(5);
   }
 
-  e.target.value=v;
+  event.target.value =
+    value;
 
-  if(
-    v.replace(/\D/g,"").length===8
-  ){
+  if (
+    value.replace(/\D/g, "")
+      .length === 8
+  ) {
     buscarCep();
   }
 }
 
-async function login(e){
+async function login(event) {
 
-  e.preventDefault();
+  event.preventDefault();
 
-  const {data,error}=
+  const {
+    data,
+    error
+  } =
     await client.auth
       .signInWithPassword({
 
@@ -783,9 +948,11 @@ async function login(e){
         password:
           $("loginPassword")
             .value
+
       });
 
-  if(error){
+  if (error) {
+
     return toast(
       error.message,
       true
@@ -797,13 +964,13 @@ async function login(e){
   );
 }
 
-async function logout(){
+async function logout() {
 
-  if(!demoMode){
+  if (!demoMode) {
     await client.auth.signOut();
   }
 
-  demoMode=false;
+  demoMode = false;
 
   $("app")
     .classList.add("hidden");
@@ -811,21 +978,23 @@ async function logout(){
   $("loginScreen")
     .classList.remove("hidden");
 
-  $("loginPassword").value="";
+  $("loginPassword")
+    .value = "";
 }
 
 document.addEventListener(
   "click",
-  e=>{
+  event => {
 
-    const b=
-      e.target.closest(
+    const button =
+      event.target.closest(
         "[data-page]"
       );
 
-    if(b){
+    if (button) {
+
       goTo(
-        b.dataset.page
+        button.dataset.page
       );
     }
   }
@@ -837,9 +1006,9 @@ $("loginForm")
     login
   );
 
-$("demoBtn").onclick=()=>{
+$("demoBtn").onclick = () => {
 
-  demoMode=true;
+  demoMode = true;
 
   showApp(
     "Demonstração"
@@ -847,15 +1016,15 @@ $("demoBtn").onclick=()=>{
 };
 
 $("logoutBtn")
-  .onclick=logout;
+  .onclick = logout;
 
-$("newStudentBtn").onclick=()=>{
+$("newStudentBtn").onclick = () => {
 
   $("studentForm").reset();
 
-  $("studentId").value="";
+  $("studentId").value = "";
 
-  $("modalTitle").textContent=
+  $("modalTitle").textContent =
     "Novo aluno";
 
   $("studentModal")
@@ -863,10 +1032,10 @@ $("newStudentBtn").onclick=()=>{
 };
 
 $("closeModal")
-  .onclick=closeModal;
+  .onclick = closeModal;
 
 $("cancelModal")
-  .onclick=closeModal;
+  .onclick = closeModal;
 
 $("studentForm")
   .addEventListener(
@@ -892,14 +1061,18 @@ $("studentCep")
     formatCep
   );
 
-(async()=>{
+(async () => {
 
   const {
-    data:{session}
-  }=
-    await client.auth.getSession();
+    data: {
+      session
+    }
+  } =
+    await client.auth
+      .getSession();
 
-  if(session){
+  if (session) {
+
     showApp(
       session.user.email
     );
