@@ -1,0 +1,25 @@
+# Sistema
+Thumbs.db
+Desktop.ini
+
+# VS Code
+.vscode/
+
+# Logs
+*.log
+
+# Arquivos temporários
+*.tmp
+*.temp
+
+# Ambiente local
+.env
+.env.*
+!.env.example
+
+# Dependências
+node_modules/
+
+# Builds
+dist/
+build/
