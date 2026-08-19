@@ -1079,3 +1079,690 @@ $("studentCep")
   }
 
 })();
+/* =========================================================
+   FINANCEIRO - CONTROLE DE LANÇAMENTOS
+   ========================================================= */
+
+let financeCache = [];
+
+/* Abrir modal de novo lançamento */
+function openFinanceModal() {
+
+  const modal = document.getElementById("financeModal");
+
+  if (!modal) return;
+
+  document.getElementById("financeForm")?.reset();
+
+  const id = document.getElementById("financeId");
+
+  if (id) id.value = "";
+
+  loadFinanceStudents();
+
+  modal.classList.remove("hidden");
+}
+
+
+/* Fechar modal financeiro */
+function closeFinanceModal() {
+
+  const modal = document.getElementById("financeModal");
+
+  if (!modal) return;
+
+  modal.classList.add("hidden");
+
+  document.getElementById("financeForm")?.reset();
+}
+
+
+/* Carregar alunos no campo de seleção */
+function loadFinanceStudents() {
+
+  const select = document.getElementById("financeStudent");
+
+  if (!select) return;
+
+  select.innerHTML = `
+    <option value="">
+      Selecione o aluno
+    </option>
+  `;
+
+  studentsCache
+    .filter(student => student.status === "ativo")
+    .sort((a, b) =>
+      String(a.nome || "").localeCompare(
+        String(b.nome || ""),
+        "pt-BR"
+      )
+    )
+    .forEach(student => {
+
+      const option = document.createElement("option");
+
+      option.value = student.id;
+
+      option.textContent =
+        student.nome +
+        (student.cpf ? ` — ${student.cpf}` : "");
+
+      select.appendChild(option);
+
+    });
+}
+
+
+/* Inicializar eventos do Financeiro */
+function initFinanceEvents() {
+
+  const newFinanceBtn =
+    document.getElementById("newFinanceBtn");
+
+  const closeFinanceBtn =
+    document.getElementById("closeFinanceModal");
+
+  const cancelFinanceBtn =
+    document.getElementById("cancelFinanceModal");
+
+  const financeForm =
+    document.getElementById("financeForm");
+
+
+  if (newFinanceBtn) {
+
+    newFinanceBtn.onclick = openFinanceModal;
+
+  }
+
+
+  if (closeFinanceBtn) {
+
+    closeFinanceBtn.onclick = closeFinanceModal;
+
+  }
+
+
+  if (cancelFinanceBtn) {
+
+    cancelFinanceBtn.onclick = closeFinanceModal;
+
+  }
+
+
+  if (financeForm) {
+
+    financeForm.addEventListener(
+      "submit",
+      saveFinance
+    );
+
+  }
+
+}
+
+
+/* Salvar lançamento */
+async function saveFinance(event) {
+
+  event.preventDefault();
+
+  const alunoId =
+    document.getElementById("financeStudent")?.value || null;
+
+  const tipo =
+    document.getElementById("financeTipo")?.value || "mensalidade";
+
+  const status =
+    document.getElementById("financeStatusForm")?.value || "aberto";
+
+  const descricao =
+    document.getElementById("financeDescricao")?.value.trim() || null;
+
+  const valor =
+    Number(
+      document.getElementById("financeValor")?.value || 0
+    );
+
+  const vencimento =
+    document.getElementById("financeVencimento")?.value || null;
+
+  const pagamento =
+    document.getElementById("financePagamento")?.value || null;
+
+  const formaPagamento =
+    document.getElementById("financeFormaPagamento")?.value || null;
+
+  const observacoes =
+    document.getElementById("financeObservacoes")?.value.trim() || null;
+
+
+  if (!alunoId) {
+
+    return toast(
+      "Selecione o aluno.",
+      true
+    );
+
+  }
+
+
+  if (!valor || valor <= 0) {
+
+    return toast(
+      "Informe um valor válido.",
+      true
+    );
+
+  }
+
+
+  const payload = {
+
+    aluno_id: alunoId,
+
+    tipo,
+
+    status,
+
+    descricao,
+
+    valor,
+
+    data_vencimento: vencimento,
+
+    data_pagamento: pagamento,
+
+    forma_pagamento: formaPagamento,
+
+    observacoes
+
+  };
+
+
+  /* MODO DEMONSTRAÇÃO */
+
+  if (demoMode) {
+
+    financeCache.unshift({
+
+      id: crypto.randomUUID(),
+
+      ...payload,
+
+      criado_em: new Date().toISOString()
+
+    });
+
+
+    closeFinanceModal();
+
+    renderFinance();
+
+    return toast(
+      "Lançamento salvo na demonstração."
+    );
+
+  }
+
+
+  /* SUPABASE */
+
+  const result =
+    await client
+      .from("financeiro")
+      .insert(payload)
+      .select()
+      .single();
+
+
+  if (result.error) {
+
+    return toast(
+      result.error.message,
+      true
+    );
+
+  }
+
+
+  closeFinanceModal();
+
+  await loadFinance();
+
+  toast(
+    "Lançamento financeiro salvo."
+  );
+
+}
+
+
+/* Carregar financeiro */
+async function loadFinance() {
+
+  if (demoMode) {
+
+    financeCache =
+      JSON.parse(
+        localStorage.getItem(
+          "thm_demo_financeiro"
+        ) || "[]"
+      );
+
+    renderFinance();
+
+    return;
+
+  }
+
+
+  const result =
+    await client
+      .from("financeiro")
+      .select("*")
+      .order(
+        "data_vencimento",
+        {
+          ascending: false
+        }
+      );
+
+
+  if (result.error) {
+
+    console.error(
+      "Erro ao carregar financeiro:",
+      result.error
+    );
+
+    return;
+
+  }
+
+
+  financeCache =
+    result.data || [];
+
+  renderFinance();
+
+}
+
+
+/* Renderizar financeiro */
+function renderFinance() {
+
+  const table =
+    document.getElementById("financeTable");
+
+  if (!table) return;
+
+
+  let totalRecebido = 0;
+
+  let totalAberto = 0;
+
+  let totalAtrasado = 0;
+
+
+  financeCache.forEach(item => {
+
+    const valor =
+      Number(item.valor || 0);
+
+    if (item.status === "pago") {
+
+      totalRecebido += valor;
+
+    }
+
+    if (item.status === "aberto") {
+
+      totalAberto += valor;
+
+    }
+
+    if (item.status === "atrasado") {
+
+      totalAtrasado += valor;
+
+    }
+
+  });
+
+
+  const total =
+    document.getElementById("financeTotal");
+
+  const lancamentos =
+    document.getElementById("financeLancamentos");
+
+  const aberto =
+    document.getElementById("financeAberto");
+
+  const atrasado =
+    document.getElementById("financeAtrasado");
+
+
+  if (total) {
+
+    total.textContent =
+      formatMoney(totalRecebido);
+
+  }
+
+
+  if (lancamentos) {
+
+    lancamentos.textContent =
+      financeCache.length;
+
+  }
+
+
+  if (aberto) {
+
+    aberto.textContent =
+      formatMoney(totalAberto);
+
+  }
+
+
+  if (atrasado) {
+
+    atrasado.textContent =
+      formatMoney(totalAtrasado);
+
+  }
+
+
+  const search =
+    (
+      document.getElementById("financeSearch")
+        ?.value || ""
+    )
+      .toLowerCase();
+
+
+  const statusFilter =
+    document.getElementById("financeStatus")
+      ?.value || "todos";
+
+
+  const rows =
+    financeCache.filter(item => {
+
+      const text =
+        [
+          item.descricao,
+          item.tipo,
+          item.status
+        ]
+          .join(" ")
+          .toLowerCase();
+
+
+      const matchSearch =
+        !search ||
+        text.includes(search);
+
+
+      const matchStatus =
+        statusFilter === "todos" ||
+        item.status === statusFilter;
+
+
+      return (
+        matchSearch &&
+        matchStatus
+      );
+
+    });
+
+
+  if (!rows.length) {
+
+    table.innerHTML = `
+      <table class="table">
+
+        <thead>
+
+          <tr>
+            <th>Aluno</th>
+            <th>Descrição</th>
+            <th>Vencimento</th>
+            <th>Valor</th>
+            <th>Status</th>
+            <th>Pagamento</th>
+            <th>Ações</th>
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+          <tr>
+
+            <td colspan="7">
+              Nenhum lançamento cadastrado.
+            </td>
+
+          </tr>
+
+        </tbody>
+
+      </table>
+    `;
+
+    return;
+
+  }
+
+
+  table.innerHTML = `
+
+    <table class="table">
+
+      <thead>
+
+        <tr>
+          <th>Aluno</th>
+          <th>Descrição</th>
+          <th>Vencimento</th>
+          <th>Valor</th>
+          <th>Status</th>
+          <th>Pagamento</th>
+          <th>Ações</th>
+        </tr>
+
+      </thead>
+
+      <tbody>
+
+        ${rows.map(item => {
+
+          const student =
+            studentsCache.find(
+              student =>
+                String(student.id) ===
+                String(item.aluno_id)
+            );
+
+
+          const studentName =
+            student?.nome ||
+            "Aluno não encontrado";
+
+
+          return `
+
+            <tr>
+
+              <td>
+                <strong>
+                  ${esc(studentName)}
+                </strong>
+              </td>
+
+              <td>
+                ${esc(item.descricao || item.tipo || "—")}
+              </td>
+
+              <td>
+                ${formatDate(item.data_vencimento)}
+              </td>
+
+              <td>
+                ${formatMoney(item.valor)}
+              </td>
+
+              <td>
+                <span class="status ${esc(item.status)}">
+                  ${esc(item.status || "—")}
+                </span>
+              </td>
+
+              <td>
+                ${formatDate(item.data_pagamento)}
+              </td>
+
+              <td>
+                <button
+                  class="mini"
+                  type="button"
+                  onclick="deleteFinance('${item.id}')"
+                >
+                  Excluir
+                </button>
+              </td>
+
+            </tr>
+
+          `;
+
+        }).join("")}
+
+      </tbody>
+
+    </table>
+
+  `;
+
+}
+
+
+/* Formatação monetária */
+function formatMoney(value) {
+
+  return Number(value || 0).toLocaleString(
+    "pt-BR",
+    {
+      style: "currency",
+      currency: "BRL"
+    }
+  );
+
+}
+
+
+/* Formatação de data */
+function formatDate(value) {
+
+  if (!value) return "—";
+
+  const date =
+    new Date(value + "T00:00:00");
+
+  if (Number.isNaN(date.getTime())) {
+
+    return "—";
+
+  }
+
+  return date.toLocaleDateString(
+    "pt-BR"
+  );
+
+}
+
+
+/* Excluir lançamento */
+async function deleteFinance(id) {
+
+  if (
+    !confirm(
+      "Deseja realmente excluir este lançamento?"
+    )
+  ) {
+
+    return;
+
+  }
+
+
+  if (demoMode) {
+
+    financeCache =
+      financeCache.filter(
+        item => item.id !== id
+      );
+
+    localStorage.setItem(
+      "thm_demo_financeiro",
+      JSON.stringify(financeCache)
+    );
+
+    renderFinance();
+
+    return toast(
+      "Lançamento excluído."
+    );
+
+  }
+
+
+  const result =
+    await client
+      .from("financeiro")
+      .delete()
+      .eq("id", id);
+
+
+  if (result.error) {
+
+    return toast(
+      result.error.message,
+      true
+    );
+
+  }
+
+
+  await loadFinance();
+
+  toast(
+    "Lançamento excluído."
+  );
+
+}
+
+
+/* Filtros */
+document
+  .getElementById("financeSearch")
+  ?.addEventListener(
+    "input",
+    renderFinance
+  );
+
+
+document
+  .getElementById("financeStatus")
+  ?.addEventListener(
+    "change",
+    renderFinance
+  );
+
+
+/* Inicialização */
+initFinanceEvents();

@@ -104,6 +104,8 @@
 </div>
 
 
+<!-- DASHBOARD -->
+
 <section id="dashboardPage" class="page">
 
   <div class="page-heading">
@@ -189,6 +191,8 @@
 </section>
 
 
+<!-- ALUNOS -->
+
 <section id="alunosPage" class="page hidden">
 
   <div class="page-heading">
@@ -252,21 +256,167 @@
 </section>
 
 
+<!-- FINANCEIRO -->
+
 <section id="financeiroPage" class="page hidden">
 
-  <div class="placeholder">
+  <div class="page-heading">
 
-    <h2>Financeiro</h2>
+    <div>
 
-    <p>
-      Módulo preparado para mensalidades,
-      cobranças, despesas e inadimplência.
-    </p>
+      <h2>Financeiro</h2>
+
+      <p>
+        Controle de mensalidades, pagamentos e lançamentos.
+      </p>
+
+    </div>
+
+    <button
+      id="newFinanceBtn"
+      class="primary"
+      type="button"
+    >
+      + Novo lançamento
+    </button>
+
+  </div>
+
+
+  <div class="stats-grid">
+
+    <div class="stat">
+
+      <span>💰</span>
+
+      <b id="financeTotal">R$ 0,00</b>
+
+      <small>Total recebido</small>
+
+    </div>
+
+
+    <div class="stat">
+
+      <span>📋</span>
+
+      <b id="financeLancamentos">0</b>
+
+      <small>Total de lançamentos</small>
+
+    </div>
+
+
+    <div class="stat">
+
+      <span>⏰</span>
+
+      <b id="financeAberto">R$ 0,00</b>
+
+      <small>Em aberto</small>
+
+    </div>
+
+
+    <div class="stat">
+
+      <span>❌</span>
+
+      <b id="financeAtrasado">R$ 0,00</b>
+
+      <small>Em atraso</small>
+
+    </div>
+
+  </div>
+
+
+  <div class="toolbar">
+
+    <input
+      id="financeSearch"
+      type="search"
+      placeholder="🔎 Buscar lançamento"
+    >
+
+    <select id="financeStatus">
+
+      <option value="todos">
+        Todos os status
+      </option>
+
+      <option value="pago">
+        Pago
+      </option>
+
+      <option value="aberto">
+        Em aberto
+      </option>
+
+      <option value="atrasado">
+        Em atraso
+      </option>
+
+      <option value="cancelado">
+        Cancelado
+      </option>
+
+    </select>
+
+  </div>
+
+
+  <div class="panel">
+
+    <div class="panel-title">
+      Lançamentos financeiros
+    </div>
+
+    <div
+      id="financeTable"
+      class="table-wrap"
+    >
+
+      <table class="table">
+
+        <thead>
+
+          <tr>
+
+            <th>Aluno</th>
+            <th>Descrição</th>
+            <th>Vencimento</th>
+            <th>Valor</th>
+            <th>Status</th>
+            <th>Pagamento</th>
+            <th>Ações</th>
+
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+          <tr>
+
+            <td colspan="7">
+              Nenhum lançamento cadastrado.
+            </td>
+
+          </tr>
+
+        </tbody>
+
+      </table>
+
+    </div>
 
   </div>
 
 </section>
 
+
+<!-- ACESSOS -->
 
 <section id="acessosPage" class="page hidden">
 
@@ -284,6 +434,8 @@
 </section>
 
 
+<!-- COMERCIAL -->
+
 <section id="comercialPage" class="page hidden">
 
   <div class="placeholder">
@@ -299,6 +451,8 @@
 
 </section>
 
+
+<!-- TREINOS -->
 
 <section id="treinosPage" class="page hidden">
 
@@ -316,6 +470,8 @@
 </section>
 
 
+<!-- AVALIAÇÕES -->
+
 <section id="avaliacoesPage" class="page hidden">
 
   <div class="placeholder">
@@ -331,6 +487,8 @@
 
 </section>
 
+
+<!-- RELATÓRIOS -->
 
 <section id="relatoriosPage" class="page hidden">
 
@@ -384,11 +542,8 @@
 
 <form id="studentForm" class="form-grid">
 
-
 <input id="studentId" type="hidden">
 
-
-<!-- IDENTIFICAÇÃO -->
 
 <div class="section-title span-2">
   Identificação
@@ -426,8 +581,6 @@
 
 </label>
 
-
-<!-- DADOS PESSOAIS -->
 
 <div class="section-title span-2">
   Dados pessoais
@@ -493,29 +646,12 @@
       Selecione
     </option>
 
-    <option>
-      Hipertrofia
-    </option>
-
-    <option>
-      Emagrecimento
-    </option>
-
-    <option>
-      Condicionamento
-    </option>
-
-    <option>
-      Força
-    </option>
-
-    <option>
-      Qualidade de vida
-    </option>
-
-    <option>
-      Reabilitação
-    </option>
+    <option>Hipertrofia</option>
+    <option>Emagrecimento</option>
+    <option>Condicionamento</option>
+    <option>Força</option>
+    <option>Qualidade de vida</option>
+    <option>Reabilitação</option>
 
   </select>
 
@@ -530,8 +666,6 @@
 
 </label>
 
-
-<!-- VÍNCULO COM A ACADEMIA -->
 
 <div class="section-title span-2">
   Vínculo com a academia
@@ -562,8 +696,6 @@
 </label>
 
 
-<!-- RESPONSÁVEL -->
-
 <div class="section-title span-2">
   Responsável
 </div>
@@ -592,8 +724,6 @@
 
 </label>
 
-
-<!-- ENDEREÇO -->
 
 <div class="section-title span-2">
   Endereço
@@ -687,8 +817,6 @@
 </label>
 
 
-<!-- OBSERVAÇÕES -->
-
 <div class="section-title span-2">
   Observações
 </div>
@@ -708,8 +836,6 @@
 </label>
 
 
-<!-- AÇÕES -->
-
 <div class="form-actions span-2">
 
   <button
@@ -725,6 +851,257 @@
     type="submit"
   >
     Salvar aluno
+  </button>
+
+</div>
+
+
+</form>
+
+</div>
+
+</div>
+
+
+<!-- MODAL FINANCEIRO -->
+
+<div id="financeModal" class="modal hidden">
+
+<div class="modal-card">
+
+<div class="modal-head">
+
+  <div>
+
+    <h2>Novo lançamento</h2>
+
+    <p>
+      Registre uma movimentação financeira.
+    </p>
+
+  </div>
+
+  <button
+    id="closeFinanceModal"
+    class="icon-btn"
+    type="button"
+  >
+    ×
+  </button>
+
+</div>
+
+
+<form id="financeForm" class="form-grid">
+
+<input
+  id="financeId"
+  type="hidden"
+>
+
+
+<div class="section-title span-2">
+  Dados do lançamento
+</div>
+
+
+<label class="span-2">
+
+  Aluno
+
+  <select id="financeStudent">
+
+    <option value="">
+      Selecione o aluno
+    </option>
+
+  </select>
+
+</label>
+
+
+<label>
+
+  Tipo
+
+  <select id="financeTipo">
+
+    <option value="mensalidade">
+      Mensalidade
+    </option>
+
+    <option value="matricula">
+      Matrícula
+    </option>
+
+    <option value="produto">
+      Produto
+    </option>
+
+    <option value="servico">
+      Serviço
+    </option>
+
+    <option value="outro">
+      Outro
+    </option>
+
+  </select>
+
+</label>
+
+
+<label>
+
+  Status
+
+  <select id="financeStatusForm">
+
+    <option value="aberto">
+      Em aberto
+    </option>
+
+    <option value="pago">
+      Pago
+    </option>
+
+    <option value="atrasado">
+      Em atraso
+    </option>
+
+    <option value="cancelado">
+      Cancelado
+    </option>
+
+  </select>
+
+</label>
+
+
+<label>
+
+  Descrição
+
+  <input
+    id="financeDescricao"
+    maxlength="150"
+    placeholder="Ex.: Mensalidade agosto"
+  >
+
+</label>
+
+
+<label>
+
+  Valor
+
+  <input
+    id="financeValor"
+    type="number"
+    min="0"
+    step="0.01"
+    placeholder="0,00"
+  >
+
+</label>
+
+
+<label>
+
+  Data de vencimento
+
+  <input
+    id="financeVencimento"
+    type="date"
+  >
+
+</label>
+
+
+<label>
+
+  Data de pagamento
+
+  <input
+    id="financePagamento"
+    type="date"
+  >
+
+</label>
+
+
+<label>
+
+  Forma de pagamento
+
+  <select id="financeFormaPagamento">
+
+    <option value="">
+      Selecione
+    </option>
+
+    <option value="pix">
+      PIX
+    </option>
+
+    <option value="dinheiro">
+      Dinheiro
+    </option>
+
+    <option value="cartao_credito">
+      Cartão de crédito
+    </option>
+
+    <option value="cartao_debito">
+      Cartão de débito
+    </option>
+
+    <option value="boleto">
+      Boleto
+    </option>
+
+    <option value="transferencia">
+      Transferência
+    </option>
+
+    <option value="outro">
+      Outro
+    </option>
+
+  </select>
+
+</label>
+
+
+<label class="span-2">
+
+  Observações
+
+  <textarea
+    id="financeObservacoes"
+    rows="3"
+    maxlength="500"
+    placeholder="Observações sobre este lançamento..."
+  ></textarea>
+
+</label>
+
+
+<div class="form-actions span-2">
+
+  <button
+    id="cancelFinanceModal"
+    class="secondary"
+    type="button"
+  >
+    Cancelar
+  </button>
+
+  <button
+    class="primary"
+    type="submit"
+  >
+    Salvar lançamento
   </button>
 
 </div>
