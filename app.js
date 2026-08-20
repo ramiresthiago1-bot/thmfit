@@ -1089,7 +1089,12 @@ $("studentCep")
 
 let financeCache = [];
 
+let financeRevenueChart = null;
+let financeStatusChart = null;
+let financePaymentChart = null;
+
 /* Abrir modal de novo lançamento */
+
 function openFinanceModal() {
 
   const modal = document.getElementById("financeModal");
@@ -1362,16 +1367,16 @@ async function loadFinance() {
 
   if (demoMode) {
 
-    financeCache =
-      JSON.parse(
-        localStorage.getItem(
-          "thm_demo_financeiro"
-        ) || "[]"
-      );
+financeCache =
+  JSON.parse(
+    localStorage.getItem(
+      "thm_demo_financeiro"
+    ) || "[]"
+  );
 
-    renderFinance();
-
-    return;
+renderFinance();
+renderFinanceCharts();
+return;
 
   }
 
@@ -1404,7 +1409,7 @@ async function loadFinance() {
     result.data || [];
 
   renderFinance();
-
+renderFinanceCharts();
 }
 
 
@@ -1865,3 +1870,322 @@ document
 
 /* Inicialização */
 initFinanceEvents();
+
+// =========================================================
+// DASHBOARD FINANCEIRO - GRÁFICOS
+// =========================================================
+
+function renderFinanceCharts() {
+
+  const revenueCanvas =
+    document.getElementById("financeRevenueChart");
+
+  const statusCanvas =
+    document.getElementById("financeStatusChart");
+
+  const paymentCanvas =
+    document.getElementById("financePaymentChart");
+
+  if (
+    !revenueCanvas ||
+    !statusCanvas ||
+    !paymentCanvas
+  ) {
+    return;
+  }
+
+  // -------------------------------------------------------
+  // RECEITA POR MÊS
+  // -------------------------------------------------------
+
+  const monthlyData = {};
+
+  financeCache.forEach(item => {
+
+    if (item.status !== "pago") {
+      return;
+    }
+
+    if (!item.data_pagamento) {
+      return;
+    }
+
+    const date =
+      new Date(item.data_pagamento + "T00:00:00");
+
+    if (Number.isNaN(date.getTime())) {
+      return;
+    }
+
+    const monthKey =
+      `${date.getFullYear()}-${String(
+        date.getMonth() + 1
+      ).padStart(2, "0")}`;
+
+    monthlyData[monthKey] =
+      (monthlyData[monthKey] || 0) +
+      Number(item.valor || 0);
+  });
+
+  const monthKeys =
+    Object.keys(monthlyData).sort();
+
+  const monthLabels =
+    monthKeys.map(key => {
+
+      const [year, month] =
+        key.split("-");
+
+      const date =
+        new Date(
+          Number(year),
+          Number(month) - 1,
+          1
+        );
+
+      return date.toLocaleDateString(
+        "pt-BR",
+        {
+          month: "short",
+          year: "numeric"
+        }
+      );
+    });
+
+  const monthlyValues =
+    monthKeys.map(
+      key => monthlyData[key]
+    );
+
+  // -------------------------------------------------------
+  // DESTRUIR GRÁFICOS ANTERIORES
+  // -------------------------------------------------------
+
+  if (financeRevenueChart) {
+    financeRevenueChart.destroy();
+  }
+
+  if (financeStatusChart) {
+    financeStatusChart.destroy();
+  }
+
+  if (financePaymentChart) {
+    financePaymentChart.destroy();
+  }
+
+  // -------------------------------------------------------
+  // GRÁFICO DE RECEITA
+  // -------------------------------------------------------
+
+  financeRevenueChart =
+    new Chart(revenueCanvas, {
+
+      type: "bar",
+
+      data: {
+        labels: monthLabels,
+
+        datasets: [
+          {
+            label: "Receita",
+            data: monthlyValues,
+            borderWidth: 1
+          }
+        ]
+      },
+
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+
+        plugins: {
+          legend: {
+            display: false
+          },
+
+          tooltip: {
+            callbacks: {
+              label: context => {
+
+                return `${context.dataset.label}: ${formatMoney(
+                  context.raw
+                )}`;
+
+              }
+            }
+          }
+        }
+      }
+    });
+
+  // -------------------------------------------------------
+  // STATUS DOS LANÇAMENTOS
+  // -------------------------------------------------------
+
+  const statusData = {
+    pago: 0,
+    aberto: 0,
+    atrasado: 0,
+    cancelado: 0
+  };
+
+  financeCache.forEach(item => {
+
+    const status =
+      item.status || "aberto";
+
+    if (
+      Object.prototype.hasOwnProperty.call(
+        statusData,
+        status
+      )
+    ) {
+
+      statusData[status] +=
+        Number(item.valor || 0);
+
+    }
+
+  });
+
+  financeStatusChart =
+    new Chart(statusCanvas, {
+
+      type: "doughnut",
+
+      data: {
+
+        labels: [
+          "Pago",
+          "Aberto",
+          "Atrasado",
+          "Cancelado"
+        ],
+
+        datasets: [
+          {
+            data: [
+              statusData.pago,
+              statusData.aberto,
+              statusData.atrasado,
+              statusData.cancelado
+            ],
+            borderWidth: 1
+          }
+        ]
+      },
+
+      options: {
+
+        responsive: true,
+        maintainAspectRatio: false,
+
+        plugins: {
+
+          legend: {
+            position: "bottom"
+          },
+
+          tooltip: {
+
+            callbacks: {
+
+              label: context => {
+
+                return `${context.label}: ${formatMoney(
+                  context.raw
+                )}`;
+
+              }
+
+            }
+
+          }
+
+        }
+
+      }
+
+    });
+
+  // -------------------------------------------------------
+  // FORMAS DE PAGAMENTO
+  // -------------------------------------------------------
+
+  const paymentData = {};
+
+  financeCache.forEach(item => {
+
+    if (item.status !== "pago") {
+      return;
+    }
+
+    const forma =
+      item.forma_pagamento ||
+      "Não informado";
+
+    paymentData[forma] =
+      (paymentData[forma] || 0) +
+      Number(item.valor || 0);
+
+  });
+
+  const paymentLabels =
+    Object.keys(paymentData);
+
+  const paymentValues =
+    paymentLabels.map(
+      key => paymentData[key]
+    );
+
+  financePaymentChart =
+    new Chart(paymentCanvas, {
+
+      type: "doughnut",
+
+      data: {
+
+        labels: paymentLabels,
+
+        datasets: [
+          {
+            data: paymentValues,
+            borderWidth: 1
+          }
+        ]
+      },
+
+      options: {
+
+        responsive: true,
+        maintainAspectRatio: false,
+
+        plugins: {
+
+          legend: {
+            position: "bottom"
+          },
+
+          tooltip: {
+
+            callbacks: {
+
+              label: context => {
+
+                return `${context.label}: ${formatMoney(
+                  context.raw
+                )}`;
+
+              }
+
+            }
+
+          }
+
+        }
+
+      }
+
+    });
+
+}

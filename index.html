@@ -329,7 +329,43 @@
     </div>
 
   </div>
+<div class="finance-dashboard">
 
+  <div class="panel finance-chart-panel">
+    <div class="panel-title">
+      Receita por mês
+    </div>
+
+    <div class="chart-container">
+      <canvas id="financeRevenueChart"></canvas>
+    </div>
+  </div>
+
+  <div class="finance-chart-row">
+
+    <div class="panel finance-chart-panel">
+      <div class="panel-title">
+        Situação financeira
+      </div>
+
+      <div class="chart-container chart-small">
+        <canvas id="financeStatusChart"></canvas>
+      </div>
+    </div>
+
+    <div class="panel finance-chart-panel">
+      <div class="panel-title">
+        Formas de pagamento
+      </div>
+
+      <div class="chart-container chart-small">
+        <canvas id="financePaymentChart"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+</div>
 
   <div class="toolbar">
 
@@ -657,15 +693,16 @@
 
 </label>
 
-
 <label>
-
   Plano
-
-  <input id="studentPlan">
-
+  <select id="studentPlan">
+    <option value="">Selecione o plano</option>
+    <option value="Mensal">Mensal</option>
+    <option value="Trimestral">Trimestral</option>
+    <option value="Semestral">Semestral</option>
+    <option value="Anual">Anual</option>
+  </select>
 </label>
-
 
 <div class="section-title span-2">
   Vínculo com a academia
@@ -926,9 +963,9 @@
     <option value="">
       Selecione o aluno
     </option>
-
   </select>
 
+  <small id="financeStudentPlan" style="display: block; margin-top: 6px;" ></small>
 </label>
 
 
@@ -1129,7 +1166,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script src="config.js"></script>
-
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="app.js"></script>
 
 </body>
