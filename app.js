@@ -83,6 +83,10 @@ function goTo(page) {
   if (page === "alunos") {
     renderStudents();
   }
+ 
+if (page === "financeiro") {
+  loadFinance();
+}
 }
 
 async function loadAll() {
