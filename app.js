@@ -1,26 +1,1768 @@
-const {createClient}=window.supabase;
-const client=createClient(THM_CONFIG.SUPABASE_URL,THM_CONFIG.SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
-let demoMode=false,studentsCache=[]; const $=id=>document.getElementById(id);
-function toast(m,e=false){const x=$("toast");x.textContent=m;x.className=`toast show${e?" error":""}`;setTimeout(()=>x.className="toast",3000)}
-function esc(v){return String(v??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}
-function showApp(label){$("loginScreen").classList.add("hidden");$("app").classList.remove("hidden");$("userLabel").textContent=label;goTo("dashboard");loadAll()}
-function goTo(page){document.querySelectorAll(".page").forEach(x=>x.classList.add("hidden"));$(`${page}Page`)?.classList.remove("hidden");document.querySelectorAll("[data-page]").forEach(x=>x.classList.toggle("active",x.dataset.page===page));$("pageTitle").textContent={dashboard:"Início",alunos:"Alunos",financeiro:"Financeiro",acessos:"Acessos",comercial:"Comercial",treinos:"Treinos",avaliacoes:"Avaliações",relatorios:"Relatórios"}[page]||page;if(page==="alunos")renderStudents()}
-async function loadAll(){
- if(demoMode){studentsCache=JSON.parse(localStorage.getItem("thm_demo_students")||"[]");updateStats();renderStudents();renderRecent();return}
- const [s,f,a,t]=await Promise.all([client.from("alunos").select("id,nome,cpf,telefone,data_nascimento,objetivo,plano,status,ciclo,criado_em").order("nome"),client.from("financeiro").select("id",{count:"exact",head:true}),client.from("acessos").select("id",{count:"exact",head:true}),client.from("treinos").select("id",{count:"exact",head:true})]);
- if(s.error)return toast(s.error.message,true);studentsCache=s.data||[];$("statAlunos").textContent=studentsCache.filter(x=>x.status==="ativo").length;$("statFinanceiro").textContent=f.count??0;$("statAcessos").textContent=a.count??0;$("statTreinos").textContent=t.count??0;renderStudents();renderRecent()
+const { createClient } = window.supabase;
+
+const client = createClient(
+  THM_CONFIG.SUPABASE_URL,
+  THM_CONFIG.SUPABASE_PUBLISHABLE_KEY,
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true
+    }
+  }
+);
+
+let demoMode = false;
+let studentsCache = [];
+
+const $ = id => document.getElementById(id);
+
+function toast(message, error = false) {
+  const element = $("toast");
+
+  element.textContent = message;
+  element.className = `toast show${error ? " error" : ""}`;
+
+  setTimeout(() => {
+    element.className = "toast";
+  }, 3000);
 }
-function updateStats(){$("statAlunos").textContent=studentsCache.filter(x=>x.status==="ativo").length;["statFinanceiro","statAcessos","statTreinos"].forEach(id=>$(id).textContent="—")}
-function renderRecent(){$("recentStudents").innerHTML=studentsCache.slice(0,5).map(s=>`<div class="simple-item"><span>${esc(s.nome)}</span><span class="status ${s.status}">${esc(s.status)}</span></div>`).join("")||`<div class="simple-item">Nenhum aluno cadastrado.</div>`}
-function renderStudents(){const q=($("studentSearch")?.value||"").toLowerCase(),st=$("studentStatus")?.value||"todos";const rows=studentsCache.filter(s=>(st==="todos"||s.status===st)&&[s.nome,s.cpf,s.telefone].join(" ").toLowerCase().includes(q));$("studentsTable").innerHTML=`<table class="table"><thead><tr><th>Nome</th><th>CPF</th><th>Telefone</th><th>Plano</th><th>Status</th><th>Ciclo</th><th>Ações</th></tr></thead><tbody>${rows.map(s=>`<tr><td><strong>${esc(s.nome)}</strong></td><td>${esc(s.cpf||"—")}</td><td>${esc(s.telefone||"—")}</td><td>${esc(s.plano||"—")}</td><td><span class="status ${s.status}">${esc(s.status)}</span></td><td>${s.ciclo??1}</td><td><button class="mini" data-edit="${s.id}">Editar</button> ${s.status==="inativo"?`<button class="mini" data-reuse="${s.id}">♻ Reaproveitar</button>`:""}</td></tr>`).join("")||`<tr><td colspan="7">Nenhum aluno encontrado.</td></tr>`}</tbody></table>`;document.querySelectorAll("[data-edit]").forEach(b=>b.onclick=()=>openStudent(b.dataset.edit));document.querySelectorAll("[data-reuse]").forEach(b=>b.onclick=()=>reuseStudent(b.dataset.reuse))}
-function closeModal(){$("studentModal").classList.add("hidden");$("studentForm").reset();$("studentId").value=""}
-function openStudent(id){const s=studentsCache.find(x=>x.id===id);if(!s)return;$("studentId").value=s.id;$("studentName").value=s.nome||"";$("studentCpf").value=s.cpf||"";$("studentPhone").value=s.telefone||"";$("studentBirth").value=s.data_nascimento||"";$("studentGoal").value=s.objetivo||"";$("studentPlan").value=s.plano||"";$("studentStatusForm").value=s.status||"ativo";$("modalTitle").textContent="Editar aluno";$("studentModal").classList.remove("hidden")}
-async function saveStudent(e){e.preventDefault();const id=$("studentId").value,p={nome:$("studentName").value.trim(),cpf:$("studentCpf").value.trim()||null,telefone:$("studentPhone").value.trim()||null,data_nascimento:$("studentBirth").value||null,objetivo:$("studentGoal").value||null,plano:$("studentPlan").value.trim()||null,status:$("studentStatusForm").value};if(!p.nome)return toast("Informe o nome.",true);
- if(demoMode){studentsCache=id?studentsCache.map(s=>s.id===id?{...s,...p}:s):[{id:crypto.randomUUID(),...p,ciclo:1,criado_em:new Date().toISOString()},...studentsCache];localStorage.setItem("thm_demo_students",JSON.stringify(studentsCache));closeModal();updateStats();renderStudents();renderRecent();return toast("Aluno salvo.")}
- const r=id?await client.from("alunos").update(p).eq("id",id).select().single():await client.from("alunos").insert({...p,ciclo:1}).select().single();if(r.error)return toast(r.error.message,true);closeModal();await loadAll();toast(id?"Aluno atualizado.":"Aluno cadastrado com sucesso.")}
-async function reuseStudent(id){const old=studentsCache.find(x=>x.id===id);if(!old)return;if(!confirm(`Reaproveitar o cadastro de "${old.nome}"? O histórico anterior será preservado.`))return;const name=prompt("Nome do novo aluno:");if(!name?.trim())return;const p={nome:name.trim(),cpf:null,telefone:null,data_nascimento:null,objetivo:null,plano:null,status:"ativo",ciclo:(old.ciclo||1)+1};if(demoMode){studentsCache.unshift({id:crypto.randomUUID(),...p});localStorage.setItem("thm_demo_students",JSON.stringify(studentsCache));updateStats();renderStudents();renderRecent();return toast("Novo ciclo criado.")}const r=await client.from("alunos").insert(p);if(r.error)return toast(r.error.message,true);await loadAll();toast("Novo cadastro criado.")}
-async function login(e){e.preventDefault();const {data,error}=await client.auth.signInWithPassword({email:$("loginEmail").value.trim(),password:$("loginPassword").value});if(error)return toast(error.message,true);showApp(data.user.email)}
-async function logout(){if(!demoMode)await client.auth.signOut();demoMode=false;$("app").classList.add("hidden");$("loginScreen").classList.remove("hidden");$("loginPassword").value=""}
-document.addEventListener("click",e=>{const b=e.target.closest("[data-page]");if(b)goTo(b.dataset.page)});
-$("loginForm").addEventListener("submit",login);$("demoBtn").onclick=()=>{demoMode=true;showApp("Demonstração")};$("logoutBtn").onclick=logout;$("newStudentBtn").onclick=()=>{$("studentForm").reset();$("studentId").value="";$("modalTitle").textContent="Novo aluno";$("studentModal").classList.remove("hidden")};$("closeModal").onclick=closeModal;$("cancelModal").onclick=closeModal;$("studentForm").addEventListener("submit",saveStudent);$("studentSearch").addEventListener("input",renderStudents);$("studentStatus").addEventListener("change",renderStudents);
-(async()=>{const {data:{session}}=await client.auth.getSession();if(session)showApp(session.user.email)})();
+
+function esc(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function showApp(label) {
+  $("loginScreen").classList.add("hidden");
+  $("app").classList.remove("hidden");
+
+  $("userLabel").textContent = label;
+
+  goTo("dashboard");
+  loadAll();
+}
+
+function goTo(page) {
+
+  document
+    .querySelectorAll(".page")
+    .forEach(pageElement => {
+      pageElement.classList.add("hidden");
+    });
+
+  $(`${page}Page`)?.classList.remove("hidden");
+
+  document
+    .querySelectorAll("[data-page]")
+    .forEach(button => {
+      button.classList.toggle(
+        "active",
+        button.dataset.page === page
+      );
+    });
+
+  const titles = {
+    dashboard: "Início",
+    alunos: "Alunos",
+    financeiro: "Financeiro",
+    acessos: "Acessos",
+    comercial: "Comercial",
+    treinos: "Treinos",
+    avaliacoes: "Avaliações",
+    relatorios: "Relatórios"
+  };
+
+  $("pageTitle").textContent =
+    titles[page] || page;
+
+  if (page === "alunos") {
+    renderStudents();
+  }
+}
+
+async function loadAll() {
+
+  if (demoMode) {
+
+    studentsCache = JSON.parse(
+      localStorage.getItem(
+        "thm_demo_students"
+      ) || "[]"
+    );
+
+    updateStats();
+    renderStudents();
+    renderRecent();
+
+    return;
+  }
+
+  const [
+    students,
+    financial,
+    accesses,
+    workouts
+  ] = await Promise.all([
+
+    client
+      .from("alunos")
+      .select(`
+        id,
+        nome,
+        cpf,
+        telefone,
+        data_nascimento,
+        objetivo,
+        plano,
+        status,
+        ciclo,
+        criado_em,
+        matricula,
+        data_matricula,
+        data_inicio,
+        observacoes,
+        responsavel,
+        telefone_responsavel,
+        cep,
+        estado,
+        rua,
+        numero,
+        complemento,
+        bairro,
+        cidade
+      `)
+      .order("nome"),
+
+    client
+      .from("financeiro")
+      .select("id", {
+        count: "exact",
+        head: true
+      }),
+
+    client
+      .from("acessos")
+      .select("id", {
+        count: "exact",
+        head: true
+      }),
+
+    client
+      .from("treinos")
+      .select("id", {
+        count: "exact",
+        head: true
+      })
+
+  ]);
+
+  if (students.error) {
+    return toast(
+      students.error.message,
+      true
+    );
+  }
+
+  studentsCache =
+    students.data || [];
+
+  $("statAlunos").textContent =
+    studentsCache.filter(
+      student =>
+        student.status === "ativo"
+    ).length;
+
+  $("statFinanceiro").textContent =
+    financial.count ?? 0;
+
+  $("statAcessos").textContent =
+    accesses.count ?? 0;
+
+  $("statTreinos").textContent =
+    workouts.count ?? 0;
+
+  renderStudents();
+  renderRecent();
+}
+
+function updateStats() {
+
+  $("statAlunos").textContent =
+    studentsCache.filter(
+      student =>
+        student.status === "ativo"
+    ).length;
+
+  [
+    "statFinanceiro",
+    "statAcessos",
+    "statTreinos"
+  ].forEach(id => {
+    $(id).textContent = "—";
+  });
+}
+
+function renderRecent() {
+
+  $("recentStudents").innerHTML =
+    studentsCache
+      .slice(0, 5)
+      .map(student => `
+
+        <div class="simple-item">
+
+          <span>
+            ${esc(student.nome)}
+          </span>
+
+          <span class="status ${student.status}">
+            ${esc(student.status)}
+          </span>
+
+        </div>
+
+      `)
+      .join("")
+      ||
+      `
+        <div class="simple-item">
+          Nenhum aluno cadastrado.
+        </div>
+      `;
+}
+
+function renderStudents() {
+
+  const search =
+    ($("studentSearch")?.value || "")
+      .toLowerCase();
+
+  const status =
+    $("studentStatus")?.value ||
+    "todos";
+
+  const rows =
+    studentsCache.filter(student => {
+
+      const matchesStatus =
+        status === "todos" ||
+        student.status === status;
+
+      const searchText = [
+        student.nome,
+        student.cpf,
+        student.telefone,
+        student.matricula
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return (
+        matchesStatus &&
+        searchText.includes(search)
+      );
+    });
+
+  $("studentsTable").innerHTML = `
+
+    <table class="table">
+
+      <thead>
+
+        <tr>
+
+          <th>Matrícula</th>
+          <th>Nome</th>
+          <th>CPF</th>
+          <th>Telefone</th>
+          <th>Plano</th>
+          <th>Status</th>
+          <th>Ciclo</th>
+          <th>Ações</th>
+
+        </tr>
+
+      </thead>
+
+      <tbody>
+
+        ${
+          rows
+            .map(student => `
+
+              <tr>
+
+                <td>
+                  ${esc(
+                    student.matricula ||
+                    "—"
+                  )}
+                </td>
+
+                <td>
+                  <strong>
+                    ${esc(student.nome)}
+                  </strong>
+                </td>
+
+                <td>
+                  ${esc(
+                    student.cpf ||
+                    "—"
+                  )}
+                </td>
+
+                <td>
+                  ${esc(
+                    student.telefone ||
+                    "—"
+                  )}
+                </td>
+
+                <td>
+                  ${esc(
+                    student.plano ||
+                    "—"
+                  )}
+                </td>
+
+                <td>
+
+                  <span
+                    class="status ${student.status}"
+                  >
+                    ${esc(student.status)}
+                  </span>
+
+                </td>
+
+                <td>
+                  ${student.ciclo ?? 1}
+                </td>
+
+                <td>
+
+                  <button
+                    class="mini"
+                    data-edit="${student.id}"
+                  >
+                    Editar
+                  </button>
+
+                  ${
+                    student.status === "inativo"
+                      ?
+                      `
+                        <button
+                          class="mini"
+                          data-reuse="${student.id}"
+                        >
+                          ♻ Reaproveitar
+                        </button>
+                      `
+                      :
+                      ""
+                  }
+
+                </td>
+
+              </tr>
+
+            `)
+            .join("")
+        }
+
+        ${
+          rows.length === 0
+            ?
+            `
+              <tr>
+                <td colspan="8">
+                  Nenhum aluno encontrado.
+                </td>
+              </tr>
+            `
+            :
+            ""
+        }
+
+      </tbody>
+
+    </table>
+  `;
+
+  document
+    .querySelectorAll("[data-edit]")
+    .forEach(button => {
+
+      button.onclick = () => {
+        openStudent(
+          button.dataset.edit
+        );
+      };
+
+    });
+
+  document
+    .querySelectorAll("[data-reuse]")
+    .forEach(button => {
+
+      button.onclick = () => {
+        reuseStudent(
+          button.dataset.reuse
+        );
+      };
+
+    });
+}
+
+function closeModal() {
+
+  $("studentModal")
+    .classList.add("hidden");
+
+  $("studentForm").reset();
+
+  $("studentId").value = "";
+}
+
+function openStudent(id) {
+
+  const student =
+    studentsCache.find(
+      item => item.id === id
+    );
+
+  if (!student) return;
+
+  $("studentId").value =
+    student.id;
+
+  $("studentMatricula").value =
+    student.matricula || "";
+
+  $("studentName").value =
+    student.nome || "";
+
+  $("studentCpf").value =
+    student.cpf || "";
+
+  $("studentPhone").value =
+    student.telefone || "";
+
+  $("studentBirth").value =
+    student.data_nascimento || "";
+
+  $("studentGoal").value =
+    student.objetivo || "";
+
+  $("studentPlan").value =
+    student.plano || "";
+
+  $("studentStatusForm").value =
+    student.status || "ativo";
+
+  $("studentDataMatricula").value =
+    student.data_matricula || "";
+
+  $("studentDataInicio").value =
+    student.data_inicio || "";
+
+  $("studentResponsavel").value =
+    student.responsavel || "";
+
+  $("studentTelefoneResponsavel").value =
+    student.telefone_responsavel || "";
+
+  $("studentCep").value =
+    student.cep || "";
+
+  $("studentEstado").value =
+    student.estado || "";
+
+  $("studentRua").value =
+    student.rua || "";
+
+  $("studentNumero").value =
+    student.numero || "";
+
+  $("studentComplemento").value =
+    student.complemento || "";
+
+  $("studentBairro").value =
+    student.bairro || "";
+
+  $("studentCidade").value =
+    student.cidade || "";
+
+  $("studentObservacoes").value =
+    student.observacoes || "";
+
+  $("modalTitle").textContent =
+    "Editar aluno";
+
+  $("studentModal")
+    .classList.remove("hidden");
+}
+
+async function saveStudent(event) {
+
+  event.preventDefault();
+
+  const id =
+    $("studentId").value;
+
+  const data = {
+
+    matricula:
+      $("studentMatricula")
+        .value
+        .trim() || null,
+
+    nome:
+      $("studentName")
+        .value
+        .trim(),
+
+    cpf:
+      $("studentCpf")
+        .value
+        .trim() || null,
+
+    telefone:
+      $("studentPhone")
+        .value
+        .trim() || null,
+
+    data_nascimento:
+      $("studentBirth")
+        .value || null,
+
+    objetivo:
+      $("studentGoal")
+        .value || null,
+
+    plano:
+      $("studentPlan")
+        .value
+        .trim() || null,
+
+    status:
+      $("studentStatusForm")
+        .value,
+
+    data_matricula:
+      $("studentDataMatricula")
+        .value || null,
+
+    data_inicio:
+      $("studentDataInicio")
+        .value || null,
+
+    responsavel:
+      $("studentResponsavel")
+        .value
+        .trim() || null,
+
+    telefone_responsavel:
+      $("studentTelefoneResponsavel")
+        .value
+        .trim() || null,
+
+    cep:
+      $("studentCep")
+        .value
+        .trim() || null,
+
+    estado:
+      $("studentEstado")
+        .value
+        .trim()
+        .toUpperCase() || null,
+
+    rua:
+      $("studentRua")
+        .value
+        .trim() || null,
+
+    numero:
+      $("studentNumero")
+        .value
+        .trim() || null,
+
+    complemento:
+      $("studentComplemento")
+        .value
+        .trim() || null,
+
+    bairro:
+      $("studentBairro")
+        .value
+        .trim() || null,
+
+    cidade:
+      $("studentCidade")
+        .value
+        .trim() || null,
+
+    observacoes:
+      $("studentObservacoes")
+        .value
+        .trim() || null
+  };
+
+  if (!data.nome) {
+
+    return toast(
+      "Informe o nome.",
+      true
+    );
+  }
+
+  if (demoMode) {
+
+    if (id) {
+
+      studentsCache =
+        studentsCache.map(
+          student =>
+            student.id === id
+              ?
+              {
+                ...student,
+                ...data
+              }
+              :
+              student
+        );
+
+    } else {
+
+      studentsCache = [
+
+        {
+          id: crypto.randomUUID(),
+
+          ...data,
+
+          ciclo: 1,
+
+          criado_em:
+            new Date().toISOString()
+        },
+
+        ...studentsCache
+
+      ];
+    }
+
+    localStorage.setItem(
+      "thm_demo_students",
+      JSON.stringify(
+        studentsCache
+      )
+    );
+
+    closeModal();
+
+    updateStats();
+    renderStudents();
+    renderRecent();
+
+    return toast(
+      "Aluno salvo."
+    );
+  }
+
+  const result = id
+
+    ?
+
+      await client
+        .from("alunos")
+        .update(data)
+        .eq("id", id)
+        .select()
+        .single()
+
+    :
+
+      await client
+        .from("alunos")
+        .insert({
+          ...data,
+          ciclo: 1
+        })
+        .select()
+        .single();
+
+  if (result.error) {
+
+    return toast(
+      result.error.message,
+      true
+    );
+  }
+
+  closeModal();
+
+  await loadAll();
+
+  toast(
+    id
+      ?
+      "Aluno atualizado."
+      :
+      "Aluno cadastrado com sucesso."
+  );
+}
+
+async function reuseStudent(id) {
+
+  const oldStudent =
+    studentsCache.find(
+      student =>
+        student.id === id
+    );
+
+  if (!oldStudent) return;
+
+  if (
+    !confirm(
+      `Reaproveitar o cadastro de "${oldStudent.nome}"? O histórico anterior será preservado.`
+    )
+  ) {
+    return;
+  }
+
+  const name =
+    prompt(
+      "Nome do novo aluno:"
+    );
+
+  if (!name?.trim()) return;
+
+  const data = {
+
+    matricula: null,
+
+    nome: name.trim(),
+
+    cpf: null,
+    telefone: null,
+    data_nascimento: null,
+
+    objetivo: null,
+    plano: null,
+
+    status: "ativo",
+
+    data_matricula: null,
+    data_inicio: null,
+
+    responsavel: null,
+    telefone_responsavel: null,
+
+    cep: null,
+    estado: null,
+    rua: null,
+    numero: null,
+    complemento: null,
+    bairro: null,
+    cidade: null,
+
+    observacoes: null,
+
+    ciclo:
+      (oldStudent.ciclo || 1) + 1
+  };
+
+  if (demoMode) {
+
+    studentsCache.unshift({
+      id: crypto.randomUUID(),
+      ...data
+    });
+
+    localStorage.setItem(
+      "thm_demo_students",
+      JSON.stringify(
+        studentsCache
+      )
+    );
+
+    updateStats();
+    renderStudents();
+    renderRecent();
+
+    return toast(
+      "Novo ciclo criado."
+    );
+  }
+
+  const result =
+    await client
+      .from("alunos")
+      .insert(data);
+
+  if (result.error) {
+
+    return toast(
+      result.error.message,
+      true
+    );
+  }
+
+  await loadAll();
+
+  toast(
+    "Novo cadastro criado."
+  );
+}
+
+async function buscarCep() {
+
+  const cepInput =
+    $("studentCep");
+
+  if (!cepInput) return;
+
+  const cep =
+    cepInput.value
+      .replace(/\D/g, "");
+
+  if (cep.length !== 8) {
+    return;
+  }
+
+  cepInput.value =
+    cep.substring(0, 5) +
+    "-" +
+    cep.substring(5);
+
+  try {
+
+    const response =
+      await fetch(
+        `https://viacep.com.br/ws/${cep}/json/`
+      );
+
+    if (!response.ok) {
+      throw new Error(
+        "Erro na consulta."
+      );
+    }
+
+    const data =
+      await response.json();
+
+    if (data.erro) {
+
+      return toast(
+        "CEP não encontrado.",
+        true
+      );
+    }
+
+    $("studentRua").value =
+      data.logradouro || "";
+
+    $("studentBairro").value =
+      data.bairro || "";
+
+    $("studentCidade").value =
+      data.localidade || "";
+
+    $("studentEstado").value =
+      (data.uf || "")
+        .toUpperCase();
+
+    $("studentNumero").focus();
+
+    toast(
+      "Endereço encontrado."
+    );
+
+  } catch (error) {
+
+    console.error(error);
+
+    toast(
+      "Não foi possível consultar o CEP.",
+      true
+    );
+  }
+}
+
+function formatCep(event) {
+
+  let value =
+    event.target.value
+      .replace(/\D/g, "");
+
+  if (value.length > 8) {
+    value =
+      value.substring(0, 8);
+  }
+
+  if (value.length > 5) {
+
+    value =
+      value.substring(0, 5) +
+      "-" +
+      value.substring(5);
+  }
+
+  event.target.value =
+    value;
+
+  if (
+    value.replace(/\D/g, "")
+      .length === 8
+  ) {
+    buscarCep();
+  }
+}
+
+async function login(event) {
+
+  event.preventDefault();
+
+  const {
+    data,
+    error
+  } =
+    await client.auth
+      .signInWithPassword({
+
+        email:
+          $("loginEmail")
+            .value
+            .trim(),
+
+        password:
+          $("loginPassword")
+            .value
+
+      });
+
+  if (error) {
+
+    return toast(
+      error.message,
+      true
+    );
+  }
+
+  showApp(
+    data.user.email
+  );
+}
+
+async function logout() {
+
+  if (!demoMode) {
+    await client.auth.signOut();
+  }
+
+  demoMode = false;
+
+  $("app")
+    .classList.add("hidden");
+
+  $("loginScreen")
+    .classList.remove("hidden");
+
+  $("loginPassword")
+    .value = "";
+}
+
+document.addEventListener(
+  "click",
+  event => {
+
+    const button =
+      event.target.closest(
+        "[data-page]"
+      );
+
+    if (button) {
+
+      goTo(
+        button.dataset.page
+      );
+    }
+  }
+);
+
+$("loginForm")
+  .addEventListener(
+    "submit",
+    login
+  );
+
+$("demoBtn").onclick = () => {
+
+  demoMode = true;
+
+  showApp(
+    "Demonstração"
+  );
+};
+
+$("logoutBtn")
+  .onclick = logout;
+
+$("newStudentBtn").onclick = () => {
+
+  $("studentForm").reset();
+
+  $("studentId").value = "";
+
+  $("modalTitle").textContent =
+    "Novo aluno";
+
+  $("studentModal")
+    .classList.remove("hidden");
+};
+
+$("closeModal")
+  .onclick = closeModal;
+
+$("cancelModal")
+  .onclick = closeModal;
+
+$("studentForm")
+  .addEventListener(
+    "submit",
+    saveStudent
+  );
+
+$("studentSearch")
+  .addEventListener(
+    "input",
+    renderStudents
+  );
+
+$("studentStatus")
+  .addEventListener(
+    "change",
+    renderStudents
+  );
+
+$("studentCep")
+  .addEventListener(
+    "input",
+    formatCep
+  );
+
+(async () => {
+
+  const {
+    data: {
+      session
+    }
+  } =
+    await client.auth
+      .getSession();
+
+  if (session) {
+
+    showApp(
+      session.user.email
+    );
+  }
+
+})();
+/* =========================================================
+   FINANCEIRO - CONTROLE DE LANÇAMENTOS
+   ========================================================= */
+
+let financeCache = [];
+
+/* Abrir modal de novo lançamento */
+function openFinanceModal() {
+
+  const modal = document.getElementById("financeModal");
+
+  if (!modal) return;
+
+  document.getElementById("financeForm")?.reset();
+
+  const id = document.getElementById("financeId");
+
+  if (id) id.value = "";
+
+  loadFinanceStudents();
+
+  modal.classList.remove("hidden");
+}
+
+
+/* Fechar modal financeiro */
+function closeFinanceModal() {
+
+  const modal = document.getElementById("financeModal");
+
+  if (!modal) return;
+
+  modal.classList.add("hidden");
+
+  document.getElementById("financeForm")?.reset();
+}
+
+
+/* Carregar alunos no campo de seleção */
+function loadFinanceStudents() {
+
+  const select = document.getElementById("financeStudent");
+
+  if (!select) return;
+
+  select.innerHTML = `
+    <option value="">
+      Selecione o aluno
+    </option>
+  `;
+
+  studentsCache
+    .filter(student => student.status === "ativo")
+    .sort((a, b) =>
+      String(a.nome || "").localeCompare(
+        String(b.nome || ""),
+        "pt-BR"
+      )
+    )
+    .forEach(student => {
+
+      const option = document.createElement("option");
+
+      option.value = student.id;
+
+      option.textContent =
+        student.nome +
+        (student.cpf ? ` — ${student.cpf}` : "");
+
+      select.appendChild(option);
+
+    });
+}
+
+
+/* Inicializar eventos do Financeiro */
+function initFinanceEvents() {
+
+  const newFinanceBtn =
+    document.getElementById("newFinanceBtn");
+
+  const closeFinanceBtn =
+    document.getElementById("closeFinanceModal");
+
+  const cancelFinanceBtn =
+    document.getElementById("cancelFinanceModal");
+
+  const financeForm =
+    document.getElementById("financeForm");
+
+
+  if (newFinanceBtn) {
+
+    newFinanceBtn.onclick = openFinanceModal;
+
+  }
+
+
+  if (closeFinanceBtn) {
+
+    closeFinanceBtn.onclick = closeFinanceModal;
+
+  }
+
+
+  if (cancelFinanceBtn) {
+
+    cancelFinanceBtn.onclick = closeFinanceModal;
+
+  }
+
+
+  if (financeForm) {
+
+    financeForm.addEventListener(
+      "submit",
+      saveFinance
+    );
+
+  }
+
+}
+
+
+/* Salvar lançamento */
+async function saveFinance(event) {
+
+  event.preventDefault();
+
+  const alunoId =
+    document.getElementById("financeStudent")?.value || null;
+
+  const tipo =
+    document.getElementById("financeTipo")?.value || "mensalidade";
+
+  const status =
+    document.getElementById("financeStatusForm")?.value || "aberto";
+
+  const descricao =
+    document.getElementById("financeDescricao")?.value.trim() || null;
+
+  const valor =
+    Number(
+      document.getElementById("financeValor")?.value || 0
+    );
+
+  const vencimento =
+    document.getElementById("financeVencimento")?.value || null;
+
+  const pagamento =
+    document.getElementById("financePagamento")?.value || null;
+
+  const formaPagamento =
+    document.getElementById("financeFormaPagamento")?.value || null;
+
+  const observacoes =
+    document.getElementById("financeObservacoes")?.value.trim() || null;
+
+
+  if (!alunoId) {
+
+    return toast(
+      "Selecione o aluno.",
+      true
+    );
+
+  }
+
+
+  if (!valor || valor <= 0) {
+
+    return toast(
+      "Informe um valor válido.",
+      true
+    );
+
+  }
+
+
+  const payload = {
+
+    aluno_id: alunoId,
+
+    tipo,
+
+    status,
+
+    descricao,
+
+    valor,
+
+    data_vencimento: vencimento,
+
+    data_pagamento: pagamento,
+
+    forma_pagamento: formaPagamento,
+
+    observacoes
+
+  };
+
+
+  /* MODO DEMONSTRAÇÃO */
+
+  if (demoMode) {
+
+    financeCache.unshift({
+
+      id: crypto.randomUUID(),
+
+      ...payload,
+
+      criado_em: new Date().toISOString()
+
+    });
+
+
+    closeFinanceModal();
+
+    renderFinance();
+
+    return toast(
+      "Lançamento salvo na demonstração."
+    );
+
+  }
+
+
+  /* SUPABASE */
+
+  const result =
+    await client
+      .from("financeiro")
+      .insert(payload)
+      .select()
+      .single();
+
+
+  if (result.error) {
+
+    return toast(
+      result.error.message,
+      true
+    );
+
+  }
+
+
+  closeFinanceModal();
+
+  await loadFinance();
+
+  toast(
+    "Lançamento financeiro salvo."
+  );
+
+}
+
+
+/* Carregar financeiro */
+async function loadFinance() {
+
+  if (demoMode) {
+
+    financeCache =
+      JSON.parse(
+        localStorage.getItem(
+          "thm_demo_financeiro"
+        ) || "[]"
+      );
+
+    renderFinance();
+
+    return;
+
+  }
+
+
+  const result =
+    await client
+      .from("financeiro")
+      .select("*")
+      .order(
+        "data_vencimento",
+        {
+          ascending: false
+        }
+      );
+
+
+  if (result.error) {
+
+    console.error(
+      "Erro ao carregar financeiro:",
+      result.error
+    );
+
+    return;
+
+  }
+
+
+  financeCache =
+    result.data || [];
+
+  renderFinance();
+
+}
+
+
+/* Renderizar financeiro */
+function renderFinance() {
+
+  const table =
+    document.getElementById("financeTable");
+
+  if (!table) return;
+
+
+  let totalRecebido = 0;
+
+  let totalAberto = 0;
+
+  let totalAtrasado = 0;
+
+
+  financeCache.forEach(item => {
+
+    const valor =
+      Number(item.valor || 0);
+
+    if (item.status === "pago") {
+
+      totalRecebido += valor;
+
+    }
+
+    if (item.status === "aberto") {
+
+      totalAberto += valor;
+
+    }
+
+    if (item.status === "atrasado") {
+
+      totalAtrasado += valor;
+
+    }
+
+  });
+
+
+  const total =
+    document.getElementById("financeTotal");
+
+  const lancamentos =
+    document.getElementById("financeLancamentos");
+
+  const aberto =
+    document.getElementById("financeAberto");
+
+  const atrasado =
+    document.getElementById("financeAtrasado");
+
+
+  if (total) {
+
+    total.textContent =
+      formatMoney(totalRecebido);
+
+  }
+
+
+  if (lancamentos) {
+
+    lancamentos.textContent =
+      financeCache.length;
+
+  }
+
+
+  if (aberto) {
+
+    aberto.textContent =
+      formatMoney(totalAberto);
+
+  }
+
+
+  if (atrasado) {
+
+    atrasado.textContent =
+      formatMoney(totalAtrasado);
+
+  }
+
+
+  const search =
+    (
+      document.getElementById("financeSearch")
+        ?.value || ""
+    )
+      .toLowerCase();
+
+
+  const statusFilter =
+    document.getElementById("financeStatus")
+      ?.value || "todos";
+
+
+  const rows =
+    financeCache.filter(item => {
+
+      const text =
+        [
+          item.descricao,
+          item.tipo,
+          item.status
+        ]
+          .join(" ")
+          .toLowerCase();
+
+
+      const matchSearch =
+        !search ||
+        text.includes(search);
+
+
+      const matchStatus =
+        statusFilter === "todos" ||
+        item.status === statusFilter;
+
+
+      return (
+        matchSearch &&
+        matchStatus
+      );
+
+    });
+
+
+  if (!rows.length) {
+
+    table.innerHTML = `
+      <table class="table">
+
+        <thead>
+
+          <tr>
+            <th>Aluno</th>
+            <th>Descrição</th>
+            <th>Vencimento</th>
+            <th>Valor</th>
+            <th>Status</th>
+            <th>Pagamento</th>
+            <th>Ações</th>
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+          <tr>
+
+            <td colspan="7">
+              Nenhum lançamento cadastrado.
+            </td>
+
+          </tr>
+
+        </tbody>
+
+      </table>
+    `;
+
+    return;
+
+  }
+
+
+  table.innerHTML = `
+
+    <table class="table">
+
+      <thead>
+
+        <tr>
+          <th>Aluno</th>
+          <th>Descrição</th>
+          <th>Vencimento</th>
+          <th>Valor</th>
+          <th>Status</th>
+          <th>Pagamento</th>
+          <th>Ações</th>
+        </tr>
+
+      </thead>
+
+      <tbody>
+
+        ${rows.map(item => {
+
+          const student =
+            studentsCache.find(
+              student =>
+                String(student.id) ===
+                String(item.aluno_id)
+            );
+
+
+          const studentName =
+            student?.nome ||
+            "Aluno não encontrado";
+
+
+          return `
+
+            <tr>
+
+              <td>
+                <strong>
+                  ${esc(studentName)}
+                </strong>
+              </td>
+
+              <td>
+                ${esc(item.descricao || item.tipo || "—")}
+              </td>
+
+              <td>
+                ${formatDate(item.data_vencimento)}
+              </td>
+
+              <td>
+                ${formatMoney(item.valor)}
+              </td>
+
+              <td>
+                <span class="status ${esc(item.status)}">
+                  ${esc(item.status || "—")}
+                </span>
+              </td>
+
+              <td>
+                ${formatDate(item.data_pagamento)}
+              </td>
+
+              <td>
+                <button
+                  class="mini"
+                  type="button"
+                  onclick="deleteFinance('${item.id}')"
+                >
+                  Excluir
+                </button>
+              </td>
+
+            </tr>
+
+          `;
+
+        }).join("")}
+
+      </tbody>
+
+    </table>
+
+  `;
+
+}
+
+
+/* Formatação monetária */
+function formatMoney(value) {
+
+  return Number(value || 0).toLocaleString(
+    "pt-BR",
+    {
+      style: "currency",
+      currency: "BRL"
+    }
+  );
+
+}
+
+
+/* Formatação de data */
+function formatDate(value) {
+
+  if (!value) return "—";
+
+  const date =
+    new Date(value + "T00:00:00");
+
+  if (Number.isNaN(date.getTime())) {
+
+    return "—";
+
+  }
+
+  return date.toLocaleDateString(
+    "pt-BR"
+  );
+
+}
+
+
+/* Excluir lançamento */
+async function deleteFinance(id) {
+
+  if (
+    !confirm(
+      "Deseja realmente excluir este lançamento?"
+    )
+  ) {
+
+    return;
+
+  }
+
+
+  if (demoMode) {
+
+    financeCache =
+      financeCache.filter(
+        item => item.id !== id
+      );
+
+    localStorage.setItem(
+      "thm_demo_financeiro",
+      JSON.stringify(financeCache)
+    );
+
+    renderFinance();
+
+    return toast(
+      "Lançamento excluído."
+    );
+
+  }
+
+
+  const result =
+    await client
+      .from("financeiro")
+      .delete()
+      .eq("id", id);
+
+
+  if (result.error) {
+
+    return toast(
+      result.error.message,
+      true
+    );
+
+  }
+
+
+  await loadFinance();
+
+  toast(
+    "Lançamento excluído."
+  );
+
+}
+
+
+/* Filtros */
+document
+  .getElementById("financeSearch")
+  ?.addEventListener(
+    "input",
+    renderFinance
+  );
+
+
+document
+  .getElementById("financeStatus")
+  ?.addEventListener(
+    "change",
+    renderFinance
+  );
+
+
+/* Inicialização */
+initFinanceEvents();
