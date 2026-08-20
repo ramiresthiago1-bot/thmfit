@@ -1288,28 +1288,24 @@ async function saveFinance(event) {
   /* MODO DEMONSTRAÇÃO */
 
   if (demoMode) {
+  financeCache.unshift({
+    id: crypto.randomUUID(),
+    ...payload,
+    criado_em: new Date().toISOString()
+  });
 
-    financeCache.unshift({
+  localStorage.setItem(
+    "thm_demo_financeiro",
+    JSON.stringify(financeCache)
+  );
 
-      id: crypto.randomUUID(),
+  closeFinanceModal();
+  renderFinance();
 
-      ...payload,
-
-      criado_em: new Date().toISOString()
-
-    });
-
-
-    closeFinanceModal();
-
-    renderFinance();
-
-    return toast(
-      "Lançamento salvo na demonstração."
-    );
-
-  }
-
+  return toast(
+    "Lançamento salvo na demonstração."
+  );
+}
 
   /* SUPABASE */
 
