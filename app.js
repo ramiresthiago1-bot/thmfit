@@ -1313,12 +1313,31 @@ async function saveFinance(event) {
 
   /* SUPABASE */
 
-  const result =
+const financeId =
+  document.getElementById("financeId")?.value || "";
+
+let result;
+
+if (financeId) {
+
+  result =
+    await client
+      .from("financeiro")
+      .update(payload)
+      .eq("id", financeId)
+      .select()
+      .single();
+
+} else {
+
+  result =
     await client
       .from("financeiro")
       .insert(payload)
       .select()
       .single();
+
+}
 
 
   if (result.error) {
@@ -1632,12 +1651,20 @@ function renderFinance() {
 
               <td>
                 <button
-                  class="mini"
-                  type="button"
-                  onclick="deleteFinance('${item.id}')"
-                >
-                  Excluir
-                </button>
+  class="mini"
+  type="button"
+  onclick="editFinance('${item.id}')"
+>
+  Editar
+</button>
+
+<button
+  class="mini"
+  type="button"
+  onclick="deleteFinance('${item.id}')"
+>
+  Excluir
+</button>
               </td>
 
             </tr>
@@ -1749,7 +1776,79 @@ async function deleteFinance(id) {
   );
 
 }
+/* Editar lançamento */
+function editFinance(id) {
 
+  const item =
+    financeCache.find(
+      finance =>
+        String(finance.id) === String(id)
+    );
+
+  if (!item) {
+
+    return toast(
+      "Lançamento não encontrado.",
+      true
+    );
+
+  }
+
+  const modal =
+    document.getElementById("financeModal");
+
+  if (!modal) return;
+
+  document.getElementById("financeId").value =
+    item.id || "";
+
+  document.getElementById("financeStudent").value =
+    item.aluno_id || "";
+
+  document.getElementById("financeTipo").value =
+    item.tipo || "mensalidade";
+
+  document.getElementById("financeStatusForm").value =
+    item.status || "aberto";
+
+  document.getElementById("financeDescricao").value =
+    item.descricao || "";
+
+  document.getElementById("financeValor").value =
+    item.valor || "";
+
+  document.getElementById("financeVencimento").value =
+    item.data_vencimento || "";
+
+  document.getElementById("financePagamento").value =
+    item.data_pagamento || "";
+
+  document.getElementById("financeFormaPagamento").value =
+    item.forma_pagamento || "";
+
+  document.getElementById("financeObservacoes").value =
+    item.observacoes || "";
+
+  const title =
+    document.querySelector(
+      "#financeModal h2"
+    );
+
+  if (title) {
+
+    title.textContent =
+      "Editar lançamento";
+
+  }
+
+  loadFinanceStudents();
+
+  document.getElementById("financeStudent").value =
+    item.aluno_id || "";
+
+  modal.classList.remove("hidden");
+
+}
 
 /* Filtros */
 document
