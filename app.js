@@ -468,6 +468,7 @@ function openStudent(id) {
 
   $("studentPlan").value =
     student.plano || "";
+$("studentDescontoMatricula").checked = false;
 
   $("studentStatusForm").value =
     student.status || "ativo";
@@ -516,11 +517,19 @@ function openStudent(id) {
 }
 
 async function saveStudent(event) {
-
   event.preventDefault();
 
   const id =
     $("studentId").value;
+
+  const isNewStudent = !id;
+
+  const descontoMatricula =
+    isNewStudent &&
+    $("studentDescontoMatricula")?.checked === true;
+
+  const taxaMatricula =
+    descontoMatricula ? 0 : 10;
 
   const data = {
 
@@ -706,14 +715,53 @@ async function saveStudent(event) {
         .select()
         .single();
 
-  if (result.error) {
+if (result.error) {
 
     return toast(
       result.error.message,
       true
     );
   }
+if (!id && taxaMatricula > 0) {
+  const alunoId = result.data?.id;
 
+  console.log("ALUNO CRIADO:", result.data);
+  console.log("ID DO ALUNO:", alunoId);
+  console.log("TAXA MATRÍCULA:", taxaMatricula);
+
+  if (alunoId) {
+    const dataMatricula =
+      $("studentDataMatricula")?.value ||
+      new Date().toISOString().slice(0, 10);
+
+    const financeiroResult =
+      await client
+        .from("financeiro")
+        .insert({
+          aluno_id: alunoId,
+          tipo: "matricula",
+          status: "Pendente",
+          descricao: "Taxa de matrícula",
+          valor: taxaMatricula,
+          data_vencimento: dataMatricula,
+          data_pagamento: null,
+          forma_pagamento: null,
+          observacoes: "Taxa de matrícula do novo cadastro"
+        });
+
+    if (financeiroResult.error) {
+      console.error(
+        "Erro ao criar taxa de matrícula:",
+        financeiroResult.error
+      );
+
+      toast(
+        "Aluno cadastrado, mas houve um erro ao criar a taxa de matrícula.",
+        true
+      );
+    }
+  }
+}
   closeModal();
 
   await loadAll();
@@ -1023,11 +1071,61 @@ $("demoBtn").onclick = () => {
 $("logoutBtn")
   .onclick = logout;
 
-$("newStudentBtn").onclick = () => {
-
+$("newStudentBtn").onclick = async () => {
   $("studentForm").reset();
-
   $("studentId").value = "";
+
+  let alunos = [];
+
+  if (demoMode) {
+    alunos = studentsCache || [];
+  } else {
+    const result =
+      await client
+        .from("alunos")
+        .select("matricula");
+
+    if (result.error) {
+      console.error(
+        "Erro ao buscar matrículas:",
+        result.error
+      );
+
+      return toast(
+        "Não foi possível gerar a matrícula.",
+        true
+      );
+    }
+
+    alunos = result.data || [];
+  }
+
+  const matriculas = alunos
+    .map(aluno =>
+      Number(aluno.matricula)
+    )
+    .filter(numero =>
+      Number.isInteger(numero) &&
+      numero > 0
+    );
+
+  const maiorMatricula =
+    matriculas.length
+      ? Math.max(...matriculas)
+      : 0;
+
+  const proximaMatricula =
+    maiorMatricula + 1;
+
+  if (proximaMatricula > 5000) {
+    return toast(
+      "Limite de 5000 matrículas atingido.",
+      true
+    );
+  }
+
+  $("studentMatricula").value =
+    proximaMatricula;
 
   $("modalTitle").textContent =
     "Novo aluno";
@@ -1419,23 +1517,18 @@ if (financeId) {
 }
 
 
-  if (result.error) {
-
-    return toast(
-      result.error.message,
-      true
-    );
-
-  }
-
-
-  closeFinanceModal();
-
-  await loadFinance();
-
-  toast(
-    "Lançamento financeiro salvo."
+if (result.error) {
+  return toast(
+    result.error.message,
+    true
   );
+}
+
+await loadAll();
+
+toast(
+  "Novo cadastro criado."
+);
 
 }
 
