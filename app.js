@@ -123,6 +123,7 @@ async function loadAll() {
         data_nascimento,
         objetivo,
         plano,
+        plano_id,
         status,
         ciclo,
         criado_em,
@@ -1127,9 +1128,11 @@ function closeFinanceModal() {
 
 
 /* Carregar alunos no campo de seleção */
-function loadFinanceStudents() {
 
-  const select = document.getElementById("financeStudent");
+async function loadFinanceStudents() {
+
+  const select =
+    document.getElementById("financeStudent");
 
   if (!select) return;
 
@@ -1139,8 +1142,59 @@ function loadFinanceStudents() {
     </option>
   `;
 
+  let planos = [];
+
+  if (demoMode) {
+
+    planos = [
+      {
+        nome: "Mensal",
+        valor: 70
+      },
+      {
+        nome: "Trimestral",
+        valor: 180
+      },
+      {
+        nome: "Semestral",
+        valor: 350
+      },
+      {
+        nome: "Anual",
+        valor: 700
+      }
+    ];
+
+  } else {
+
+    const result =
+      await client
+        .from("planos")
+        .select("id, nome, valor")
+        .eq("ativo", true)
+        .order("valor", {
+          ascending: true
+        });
+
+    if (result.error) {
+
+      console.error(
+        "Erro ao carregar planos:",
+        result.error
+      );
+
+      return;
+    }
+
+    planos = result.data || [];
+  }
+
   studentsCache
-    .filter(student => student.status === "ativo")
+    .filter(
+      student =>
+        String(student.status || "").toLowerCase() ===
+        "ativo"
+    )
     .sort((a, b) =>
       String(a.nome || "").localeCompare(
         String(b.nome || ""),
@@ -1149,19 +1203,43 @@ function loadFinanceStudents() {
     )
     .forEach(student => {
 
-      const option = document.createElement("option");
+      const option =
+        document.createElement("option");
 
       option.value = student.id;
 
       option.textContent =
         student.nome +
-        (student.cpf ? ` — ${student.cpf}` : "");
+        (
+          student.cpf
+            ? ` — ${student.cpf}`
+            : ""
+        );
+
+      const plano =
+        planos.find(
+          item =>
+            String(item.id) ===
+            String(student.plano_id)
+        );
+
+      if (plano) {
+
+        option.dataset.planoId =
+          plano.id;
+
+        option.dataset.planoNome =
+          plano.nome;
+
+        option.dataset.planoValor =
+          plano.valor;
+
+      }
 
       select.appendChild(option);
 
     });
 }
-
 
 /* Inicializar eventos do Financeiro */
 function initFinanceEvents() {
@@ -1851,6 +1929,109 @@ function editFinance(id) {
 
 }
 
+// Mostrar plano atual e preencher descrição
+
+document
+  .getElementById("financeStudent")
+  ?.addEventListener(
+    "change",
+    event => {
+
+      const planElement =
+        document.getElementById(
+          "financeStudentPlan"
+        );
+
+      const descriptionElement =
+        document.getElementById(
+          "financeDescricao"
+        );
+
+      const valueElement =
+        document.getElementById(
+          "financeValor"
+        );
+
+      if (!planElement) return;
+
+      const selectedOption =
+        event.target.options[
+          event.target.selectedIndex
+        ];
+
+      if (
+        !selectedOption ||
+        !selectedOption.value
+      ) {
+
+        planElement.textContent = "";
+
+        if (descriptionElement) {
+          descriptionElement.value = "";
+        }
+
+        if (valueElement) {
+          valueElement.value = "";
+        }
+
+        return;
+      }
+
+      const student =
+        studentsCache.find(
+          item =>
+            String(item.id) ===
+            String(event.target.value)
+        );
+
+      if (!student) {
+
+        planElement.textContent =
+          "Aluno não encontrado.";
+
+        return;
+      }
+
+      const planoNome =
+        selectedOption.dataset.planoNome || "";
+
+      const planoValor =
+        Number(
+          selectedOption.dataset.planoValor || 0
+        );
+
+      if (planoNome) {
+
+        planElement.textContent =
+          `Plano atual: ${planoNome}`;
+
+        if (descriptionElement) {
+
+          descriptionElement.value =
+            `Mensalidade — ${planoNome}`;
+        }
+
+        if (valueElement) {
+
+          valueElement.value =
+            planoValor.toFixed(2);
+        }
+
+      } else {
+
+        planElement.textContent =
+          "Plano não informado";
+
+        if (descriptionElement) {
+          descriptionElement.value = "";
+        }
+
+        if (valueElement) {
+          valueElement.value = "";
+        }
+      }
+    }
+  );
 /* Filtros */
 document
   .getElementById("financeSearch")
