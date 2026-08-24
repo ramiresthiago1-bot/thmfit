@@ -456,19 +456,106 @@
 
 <section id="acessosPage" class="page hidden">
 
-  <div class="placeholder">
+  <div class="page-heading">
+    <div>
+      <h2>Acessos</h2>
+      <p>Controle de acessos e situação dos alunos.</p>
+    </div>
+  </div>
 
-    <h2>Acessos</h2>
+  <div class="stats-grid">
 
-    <p>
-      Módulo preparado para integração
-      com Topdata e catraca facial.
-    </p>
+    <div class="stat">
+      <span>🚪</span>
+      <b id="accessTotal">0</b>
+      <small>Acessos hoje</small>
+    </div>
+
+    <div class="stat">
+      <span>👥</span>
+      <b id="accessAlunosAtivos">0</b>
+      <small>Alunos ativos</small>
+    </div>
+
+    <div class="stat">
+      <span>🟢</span>
+      <b id="accessLiberados">0</b>
+      <small>Acessos liberados</small>
+    </div>
+
+    <div class="stat">
+      <span>🔴</span>
+      <b id="accessBloqueados">0</b>
+      <small>Acessos bloqueados</small>
+    </div>
+
+  </div>
+
+  <div class="toolbar">
+
+    <input
+      id="accessSearch"
+      type="search"
+      placeholder="🔎 Buscar aluno ou matrícula"
+    >
+
+    <select id="accessStatus">
+      <option value="todos">
+        Todos os alunos
+      </option>
+
+      <option value="ativo">
+        Ativos
+      </option>
+
+      <option value="inativo">
+        Inativos
+      </option>
+    </select>
+
+  </div>
+
+  <div class="panel">
+
+    <div class="panel-title">
+      Controle de acesso dos alunos
+    </div>
+
+    <div
+      id="accessTable"
+      class="table-wrap"
+    >
+
+      <table class="table">
+
+        <thead>
+          <tr>
+            <th>Matrícula</th>
+            <th>Aluno</th>
+            <th>Status</th>
+            <th>Situação financeira</th>
+            <th>Último acesso</th>
+            <th>Acesso</th>
+          </tr>
+        </thead>
+
+        <tbody>
+
+          <tr>
+            <td colspan="6">
+              Nenhum aluno encontrado.
+            </td>
+          </tr>
+
+        </tbody>
+
+      </table>
+
+    </div>
 
   </div>
 
 </section>
-
 
 <!-- COMERCIAL -->
 

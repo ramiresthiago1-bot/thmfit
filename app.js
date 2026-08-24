@@ -87,6 +87,10 @@ function goTo(page) {
 if (page === "financeiro") {
   loadFinance();
 }
+if (page === "acessos") {
+  loadAccesses();
+}
+
 }
 
 async function loadAll() {
@@ -1182,6 +1186,602 @@ $("studentCep")
   }
 
 })();
+
+/* =========================================================
+   ACESSOS
+   ========================================================= */
+
+let accessCache = [];
+
+
+/* Carregar acessos */
+async function loadAccesses() {
+
+  if (demoMode) {
+    accessCache = [];
+    renderAccesses();
+    return;
+  }
+
+  const [
+    accesses,
+    financial
+  ] = await Promise.all([
+
+    client
+      .from("acessos")
+      .select(`
+        id,
+        aluno_id,
+        equipamento,
+        tipo,
+        resultado,
+        ocorrido_em
+      `)
+      .order("ocorrido_em", {
+        ascending: false
+      }),
+
+    client
+      .from("financeiro")
+      .select(`
+        id,
+        aluno_id,
+        status,
+        valor,
+        data_vencimento,
+        data_pagamento
+      `)
+      .order("data_vencimento", {
+        ascending: false
+      })
+
+  ]);
+
+
+  if (accesses.error) {
+
+    console.error(
+      "Erro ao carregar acessos:",
+      accesses.error
+    );
+
+    return toast(
+      accesses.error.message,
+      true
+    );
+
+  }
+
+
+  if (financial.error) {
+
+    console.error(
+      "Erro ao carregar financeiro dos acessos:",
+      financial.error
+    );
+
+    return toast(
+      financial.error.message,
+      true
+    );
+
+  }
+
+
+  accessCache = accesses.data || [];
+
+
+  window.accessFinancialCache =
+    financial.data || [];
+
+
+  renderAccesses();
+
+}
+
+
+/* Renderizar tela de Acessos */
+function renderAccesses() {
+
+  const table =
+    document.getElementById(
+      "accessTable"
+    );
+
+  if (!table) return;
+
+
+  const search =
+    (
+      document.getElementById(
+        "accessSearch"
+      )?.value || ""
+    )
+      .toLowerCase();
+
+
+  const statusFilter =
+    document.getElementById(
+      "accessStatus"
+    )?.value || "todos";
+
+
+  const financialCache =
+    window.accessFinancialCache || [];
+
+
+  /*
+    Descobrir o último acesso de cada aluno
+  */
+
+  const latestAccess = {};
+
+
+  accessCache.forEach(access => {
+
+    if (!latestAccess[access.aluno_id]) {
+
+      latestAccess[access.aluno_id] =
+        access;
+
+    }
+
+  });
+
+
+  /*
+    Montar situação financeira
+  */
+
+  function getFinancialStatus(
+    studentId
+  ) {
+
+    const records =
+      financialCache.filter(
+        item =>
+          item.aluno_id === studentId
+      );
+
+
+    if (!records.length) {
+      return "Sem lançamentos";
+    }
+
+
+    if (
+      records.some(
+        item =>
+          item.status === "atrasado"
+      )
+    ) {
+
+      return "Em atraso";
+
+    }
+
+
+    if (
+      records.some(
+        item =>
+          item.status === "aberto"
+      )
+    ) {
+
+      return "Em aberto";
+
+    }
+
+
+    if (
+      records.some(
+        item =>
+          item.status === "pago"
+      )
+    ) {
+
+      return "Em dia";
+
+    }
+
+
+    return "Não verificado";
+
+  }
+
+
+  /*
+    Determinar se o acesso está liberado
+  */
+
+  function getAccessStatus(
+    student,
+    financialStatus
+  ) {
+
+    if (
+      student.status !== "ativo"
+    ) {
+
+      return "Bloqueado";
+
+    }
+
+
+    if (
+      financialStatus === "Em atraso"
+    ) {
+
+      return "Bloqueado";
+
+    }
+
+
+    if (
+      financialStatus === "Em dia"
+    ) {
+
+      return "Liberado";
+
+    }
+
+
+    return "Verificar";
+
+  }
+
+
+  const rows =
+    studentsCache.filter(
+      student => {
+
+        const matchesStatus =
+          statusFilter === "todos" ||
+          student.status ===
+            statusFilter;
+
+
+        const searchText = [
+
+          student.nome,
+
+          student.matricula,
+
+          student.cpf,
+
+          student.telefone
+
+        ]
+          .join(" ")
+          .toLowerCase();
+
+
+        const matchesSearch =
+          searchText.includes(
+            search
+          );
+
+
+        return (
+          matchesStatus &&
+          matchesSearch
+        );
+
+      }
+    );
+
+
+  /*
+    Indicadores
+  */
+
+  const today =
+    new Date()
+      .toISOString()
+      .substring(0, 10);
+
+
+  const accessesToday =
+    accessCache.filter(
+      access =>
+        access.ocorrido_em &&
+        access.ocorrido_em
+          .substring(0, 10) ===
+          today
+    ).length;
+
+
+  const activeStudents =
+    studentsCache.filter(
+      student =>
+        student.status === "ativo"
+    ).length;
+
+
+  let liberated = 0;
+
+  let blocked = 0;
+
+
+  studentsCache.forEach(
+    student => {
+
+      const financialStatus =
+        getFinancialStatus(
+          student.id
+        );
+
+
+      const accessStatus =
+        getAccessStatus(
+          student,
+          financialStatus
+        );
+
+
+      if (
+        accessStatus ===
+        "Liberado"
+      ) {
+
+        liberated++;
+
+      }
+
+
+      if (
+        accessStatus ===
+        "Bloqueado"
+      ) {
+
+        blocked++;
+
+      }
+
+    }
+  );
+
+
+  const totalElement =
+    document.getElementById(
+      "accessTotal"
+    );
+
+  const activeElement =
+    document.getElementById(
+      "accessAlunosAtivos"
+    );
+
+  const liberatedElement =
+    document.getElementById(
+      "accessLiberados"
+    );
+
+  const blockedElement =
+    document.getElementById(
+      "accessBloqueados"
+    );
+
+
+  if (totalElement) {
+
+    totalElement.textContent =
+      accessesToday;
+
+  }
+
+
+  if (activeElement) {
+
+    activeElement.textContent =
+      activeStudents;
+
+  }
+
+
+  if (liberatedElement) {
+
+    liberatedElement.textContent =
+      liberated;
+
+  }
+
+
+  if (blockedElement) {
+
+    blockedElement.textContent =
+      blocked;
+
+  }
+
+
+  /*
+    Tabela
+  */
+
+  table.innerHTML = `
+
+    <table class="table">
+
+      <thead>
+
+        <tr>
+
+          <th>Matrícula</th>
+
+          <th>Aluno</th>
+
+          <th>Status</th>
+
+          <th>Situação financeira</th>
+
+          <th>Último acesso</th>
+
+          <th>Acesso</th>
+
+        </tr>
+
+      </thead>
+
+      <tbody>
+
+        ${
+          rows
+            .map(student => {
+
+              const financialStatus =
+                getFinancialStatus(
+                  student.id
+                );
+
+
+              const accessStatus =
+                getAccessStatus(
+                  student,
+                  financialStatus
+                );
+
+
+              const lastAccess =
+                latestAccess[
+                  student.id
+                ];
+
+
+              let lastAccessText =
+                "Nunca";
+
+
+              if (
+                lastAccess &&
+                lastAccess.ocorrido_em
+              ) {
+
+                lastAccessText =
+                  new Date(
+                    lastAccess.ocorrido_em
+                  ).toLocaleString(
+                    "pt-BR"
+                  );
+
+              }
+
+
+              return `
+
+                <tr>
+
+                  <td>
+                    ${esc(
+                      student.matricula ||
+                      "—"
+                    )}
+                  </td>
+
+                  <td>
+                    <strong>
+                      ${esc(
+                        student.nome
+                      )}
+                    </strong>
+                  </td>
+
+                  <td>
+
+                    <span
+                      class="status ${
+                        student.status
+                      }"
+                    >
+                      ${esc(
+                        student.status
+                      )}
+                    </span>
+
+                  </td>
+
+                  <td>
+                    ${esc(
+                      financialStatus
+                    )}
+                  </td>
+
+                  <td>
+                    ${esc(
+                      lastAccessText
+                    )}
+                  </td>
+
+                  <td>
+
+                    <span
+                      class="status ${
+                        accessStatus ===
+                        "Liberado"
+                          ? "ativo"
+                          : accessStatus ===
+                            "Bloqueado"
+                          ? "inativo"
+                          : ""
+                      }"
+                    >
+                      ${accessStatus}
+                    </span>
+
+                  </td>
+
+                </tr>
+
+              `;
+
+            })
+            .join("")
+        }
+
+        ${
+          rows.length === 0
+            ? `
+              <tr>
+
+                <td colspan="6">
+
+                  Nenhum aluno encontrado.
+
+                </td>
+
+              </tr>
+            `
+            : ""
+        }
+
+      </tbody>
+
+    </table>
+
+  `;
+
+}
+
+
+/* Filtros do Acessos */
+
+document
+  .getElementById("accessSearch")
+  ?.addEventListener(
+    "input",
+    renderAccesses
+  );
+
+
+document
+  .getElementById("accessStatus")
+  ?.addEventListener(
+    "change",
+    renderAccesses
+  );
+
+
 /* =========================================================
    FINANCEIRO - CONTROLE DE LANÇAMENTOS
    ========================================================= */
