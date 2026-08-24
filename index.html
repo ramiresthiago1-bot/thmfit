@@ -456,12 +456,27 @@
 
 <section id="acessosPage" class="page hidden">
 
-  <div class="page-heading">
-    <div>
-      <h2>Acessos</h2>
-      <p>Controle de acessos e situação dos alunos.</p>
-    </div>
+<div class="page-heading">
+
+  <div>
+
+    <h2>Acessos</h2>
+
+    <p>
+      Controle de acessos e situação dos alunos.
+    </p>
+
   </div>
+
+  <button
+    id="newAccessBtn"
+    class="primary"
+    type="button"
+  >
+    + Registrar acesso
+  </button>
+
+</div>
 
   <div class="stats-grid">
 
@@ -512,8 +527,140 @@
         Inativos
       </option>
     </select>
+<!-- MODAL DE ACESSO -->
+
+<div id="accessModal" class="modal hidden">
+
+  <div class="modal-card">
+
+    <div class="modal-head">
+
+      <div>
+
+        <h3>Registrar acesso</h3>
+
+        <p>
+          Registre manualmente uma entrada ou tentativa de acesso.
+        </p>
+
+      </div>
+
+      <button
+        id="closeAccessModal"
+        class="icon-btn"
+        type="button"
+      >
+        ✕
+      </button>
+
+    </div>
+
+
+    <form
+      id="accessForm"
+      class="form-grid"
+    >
+
+      <label>
+
+        Aluno
+
+        <select
+          id="accessStudent"
+          required
+        >
+
+          <option value="">
+            Selecione o aluno
+          </option>
+
+        </select>
+
+      </label>
+
+
+      <label>
+
+        Equipamento
+
+        <input
+          id="accessEquipment"
+          type="text"
+          value="Simulação manual"
+          required
+        >
+
+      </label>
+
+
+      <label>
+
+        Tipo
+
+        <select
+          id="accessType"
+          required
+        >
+
+          <option value="entrada">
+            Entrada
+          </option>
+
+          <option value="saida">
+            Saída
+          </option>
+
+        </select>
+
+      </label>
+
+
+      <label>
+
+        Resultado
+
+        <select
+          id="accessResult"
+          required
+        >
+
+          <option value="liberado">
+            Liberado
+          </option>
+
+          <option value="bloqueado">
+            Bloqueado
+          </option>
+
+        </select>
+
+      </label>
+
+
+      <div class="form-actions">
+
+        <button
+          id="cancelAccessModal"
+          class="secondary"
+          type="button"
+        >
+          Cancelar
+        </button>
+
+        <button
+          class="primary"
+          type="submit"
+        >
+          Registrar acesso
+        </button>
+
+      </div>
+
+    </form>
 
   </div>
+
+</div>
 
   <div class="panel">
 

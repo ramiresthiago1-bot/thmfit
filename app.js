@@ -1168,6 +1168,314 @@ $("studentCep")
     formatCep
   );
 
+/* =========================================================
+   ACESSOS - MODAL DE REGISTRO
+   ========================================================= */
+
+const newAccessBtn =
+  document.getElementById("newAccessBtn");
+
+const accessModal =
+  document.getElementById("accessModal");
+
+const closeAccessModal =
+  document.getElementById("closeAccessModal");
+
+const cancelAccessModal =
+  document.getElementById("cancelAccessModal");
+
+
+if (newAccessBtn) {
+
+  newAccessBtn.onclick = () => {
+
+    const form =
+      document.getElementById("accessForm");
+
+    if (form) {
+      form.reset();
+    }
+
+loadAccessStudents();
+
+    const equipment =
+      document.getElementById(
+        "accessEquipment"
+      );
+
+    if (equipment) {
+      equipment.value =
+        "Simulação manual";
+    }
+
+    if (accessModal) {
+      accessModal.classList.remove(
+        "hidden"
+      );
+    }
+
+  };
+
+}
+
+/* Salvar acesso no Supabase */
+
+async function saveAccess(event) {
+
+  event.preventDefault();
+
+  const alunoId =
+    document.getElementById(
+      "accessStudent"
+    )?.value || null;
+
+  const equipamento =
+    document.getElementById(
+      "accessEquipment"
+    )?.value.trim() ||
+    "Simulação manual";
+
+  const tipo =
+    document.getElementById(
+      "accessType"
+    )?.value || "entrada";
+
+  const resultado =
+    document.getElementById(
+      "accessResult"
+    )?.value || "liberado";
+
+
+  if (!alunoId) {
+
+    return toast(
+      "Selecione um aluno.",
+      true
+    );
+
+  }
+
+
+  if (demoMode) {
+
+    const newAccess = {
+
+      id:
+        "demo-" +
+        Date.now(),
+
+      aluno_id:
+        alunoId,
+
+      equipamento:
+        equipamento,
+
+      tipo:
+        tipo,
+
+      resultado:
+        resultado,
+
+      ocorrido_em:
+        new Date().toISOString()
+
+    };
+
+
+    accessCache.unshift(
+      newAccess
+    );
+
+
+    renderAccesses();
+
+    document
+      .getElementById(
+        "accessModal"
+      )
+      ?.classList.add(
+        "hidden"
+      );
+
+
+    return toast(
+      "Acesso registrado."
+    );
+
+  }
+
+
+  const {
+    data,
+    error
+  } = await client
+    .from("acessos")
+    .insert({
+
+      aluno_id:
+        alunoId,
+
+      equipamento:
+        equipamento,
+
+      tipo:
+        tipo,
+
+      resultado:
+        resultado,
+
+      ocorrido_em:
+        new Date().toISOString(),
+origem:
+  "manual",
+    })
+    .select()
+    .single();
+
+
+  if (error) {
+
+    console.error(
+      "Erro ao registrar acesso:",
+      error
+    );
+
+    return toast(
+      error.message,
+      true
+    );
+
+  }
+
+
+  accessCache.unshift(
+    data
+  );
+
+
+  renderAccesses();
+
+
+  document
+    .getElementById(
+      "accessModal"
+    )
+    ?.classList.add(
+      "hidden"
+    );
+
+
+  document
+    .getElementById(
+      "accessForm"
+    )
+    ?.reset();
+
+
+  toast(
+    "Acesso registrado com sucesso."
+  );
+
+}
+const accessForm =
+  document.getElementById(
+    "accessForm"
+  );
+
+if (accessForm) {
+
+  accessForm.addEventListener(
+    "submit",
+    saveAccess
+  );
+
+}
+
+/* Carregar alunos no modal de acesso */
+
+function loadAccessStudents() {
+
+  const select =
+    document.getElementById(
+      "accessStudent"
+    );
+
+  if (!select) return;
+
+
+  select.innerHTML = `
+    <option value="">
+      Selecione o aluno
+    </option>
+  `;
+
+
+  studentsCache
+    .filter(
+      student =>
+        student.status === "ativo"
+    )
+    .sort(
+      (a, b) =>
+        String(
+          a.nome || ""
+        ).localeCompare(
+          String(
+            b.nome || ""
+          ),
+          "pt-BR"
+        )
+    )
+    .forEach(student => {
+
+      const option =
+        document.createElement(
+          "option"
+        );
+
+      option.value =
+        student.id;
+
+      option.textContent =
+        `${student.matricula || "—"} — ${student.nome}`;
+
+      select.appendChild(
+        option
+      );
+
+    });
+
+}
+
+if (closeAccessModal) {
+
+  closeAccessModal.onclick = () => {
+
+    if (accessModal) {
+      accessModal.classList.add(
+        "hidden"
+      );
+    }
+
+  };
+
+}
+
+
+if (cancelAccessModal) {
+
+  cancelAccessModal.onclick = () => {
+
+    if (accessModal) {
+      accessModal.classList.add(
+        "hidden"
+      );
+    }
+
+  };
+
+}
+
 (async () => {
 
   const {
