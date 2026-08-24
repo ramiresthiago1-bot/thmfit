@@ -1217,6 +1217,54 @@ loadAccessStudents();
   };
 
 }
+const checkAccessBtn =
+  document.getElementById("checkAccessBtn");
+
+if (checkAccessBtn) {
+
+  checkAccessBtn.onclick = () => {
+
+    const studentId =
+      document.getElementById(
+        "accessStudent"
+      )?.value;
+
+    if (!studentId) {
+      return toast(
+        "Selecione um aluno primeiro.",
+        true
+      );
+    }
+
+    const student =
+      studentsCache.find(
+        item =>
+          item.id === studentId
+      );
+
+    const decision =
+      getAutomaticAccessDecision(
+        student
+      );
+
+    const result =
+      document.getElementById(
+        "accessResult"
+      );
+
+    if (result) {
+      result.value =
+        decision.resultado;
+    }
+
+    toast(
+      decision.motivo,
+      decision.resultado ===
+        "bloqueado"
+    );
+  };
+
+}
 
 /* Salvar acesso no Supabase */
 
@@ -1501,6 +1549,179 @@ if (cancelAccessModal) {
 
 let accessCache = [];
 
+/* =========================================================
+   VERSÃO 10 - REGRA AUTOMÁTICA DE ACESSO
+   ========================================================= */
+
+const ACCESS_GRACE_DAYS = 2;
+
+
+/* Verifica se o lançamento está vencido
+   considerando os 2 dias de carência */
+function isFinanceOverdue(finance) {
+
+  if (!finance) {
+    return false;
+  }
+
+  if (finance.status === "pago") {
+    return false;
+  }
+
+  if (!finance.data_vencimento) {
+    return false;
+  }
+
+  const today = new Date();
+
+  today.setHours(
+    0,
+    0,
+    0,
+    0
+  );
+
+  const dueDate =
+    new Date(
+      finance.data_vencimento
+    );
+
+  dueDate.setHours(
+    0,
+    0,
+    0,
+    0
+  );
+
+  const graceLimit =
+    new Date(
+      dueDate
+    );
+
+  graceLimit.setDate(
+    graceLimit.getDate() +
+      ACCESS_GRACE_DAYS
+  );
+
+  return today > graceLimit;
+}
+
+
+/* Decide automaticamente se o aluno
+   pode ou não acessar a academia */
+function getAutomaticAccessDecision(student) {
+
+  if (!student) {
+
+    return {
+      resultado: "bloqueado",
+      motivo: "Aluno não encontrado"
+    };
+
+  }
+
+
+  if (student.status !== "ativo") {
+
+    return {
+      resultado: "bloqueado",
+      motivo: "Aluno inativo"
+    };
+
+  }
+
+
+  const financialCache =
+    window.accessFinancialCache || [];
+
+
+  const records =
+    financialCache
+      .filter(
+        item =>
+          item.aluno_id ===
+          student.id
+      )
+      .filter(
+        item =>
+          item.status !==
+          "cancelado"
+      );
+
+
+  if (!records.length) {
+
+    return {
+      resultado: "bloqueado",
+      motivo:
+        "Sem informação financeira"
+    };
+
+  }
+
+
+  records.sort(
+    (a, b) =>
+      new Date(
+        b.data_vencimento || 0
+      ) -
+      new Date(
+        a.data_vencimento || 0
+      )
+  );
+
+
+  const latest =
+    records[0];
+
+
+  if (latest.status === "pago") {
+
+    return {
+      resultado: "liberado",
+      motivo:
+        "Mensalidade paga"
+    };
+
+  }
+
+
+  if (
+    latest.status === "aberto" ||
+    latest.status === "atrasado"
+  ) {
+
+    if (
+      !isFinanceOverdue(
+        latest
+      )
+    ) {
+
+      return {
+        resultado: "liberado",
+        motivo:
+          "Dentro do período de carência"
+      };
+
+    }
+
+
+    return {
+      resultado: "bloqueado",
+      motivo:
+        "Mensalidade vencida após carência"
+    };
+
+  }
+
+
+  return {
+    resultado: "bloqueado",
+    motivo:
+      "Situação financeira irregular"
+  };
+
+}
 
 /* Carregar acessos */
 async function loadAccesses() {
