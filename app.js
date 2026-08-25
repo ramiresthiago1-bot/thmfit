@@ -2300,6 +2300,44 @@ function renderAccesses() {
 
   if (historyTable) {
 
+    const historySearch =
+      document
+        .getElementById(
+          "accessHistorySearch"
+        )
+        ?.value
+        .trim()
+        .toLowerCase() || "";
+
+    const historyStart =
+      document
+        .getElementById(
+          "accessHistoryStart"
+        )
+        ?.value || "";
+
+    const historyEnd =
+      document
+        .getElementById(
+          "accessHistoryEnd"
+        )
+        ?.value || "";
+
+    const historyType =
+      document
+        .getElementById(
+          "accessHistoryType"
+        )
+        ?.value || "todos";
+
+    const historyResult =
+      document
+        .getElementById(
+          "accessHistoryResult"
+        )
+        ?.value || "todos";
+
+
     const historyRows =
       [...accessCache]
         .sort(
@@ -2307,6 +2345,82 @@ function renderAccesses() {
             new Date(b.ocorrido_em) -
             new Date(a.ocorrido_em)
         )
+        .filter(access => {
+
+          const student =
+            studentsCache.find(
+              student =>
+                student.id ===
+                access.aluno_id
+            );
+
+          const studentName =
+            student?.nome ||
+            "";
+
+          const studentMatricula =
+            String(
+              student?.matricula ||
+              ""
+            );
+
+          const searchMatch =
+            !historySearch ||
+            studentName
+              .toLowerCase()
+              .includes(
+                historySearch
+              ) ||
+            studentMatricula
+              .toLowerCase()
+              .includes(
+                historySearch
+              );
+
+          const accessDate =
+            access.ocorrido_em
+              ? new Date(
+                  access.ocorrido_em
+                )
+                  .toISOString()
+                  .slice(0, 10)
+              : "";
+
+          const startMatch =
+            !historyStart ||
+            (
+              accessDate &&
+              accessDate >=
+                historyStart
+            );
+
+          const endMatch =
+            !historyEnd ||
+            (
+              accessDate &&
+              accessDate <=
+                historyEnd
+            );
+
+          const typeMatch =
+            historyType === "todos" ||
+            access.tipo ===
+              historyType;
+
+          const resultMatch =
+            historyResult === "todos" ||
+            access.resultado ===
+              historyResult;
+
+          return (
+            searchMatch &&
+            startMatch &&
+            endMatch &&
+            typeMatch &&
+            resultMatch
+          );
+
+        })
         .map(access => {
 
           const student =
@@ -2412,16 +2526,18 @@ function renderAccesses() {
 
         <tbody>
 
-          ${
-            historyRows ||
-            `
-              <tr>
-                <td colspan="6">
-                  Nenhum acesso registrado.
-                </td>
-              </tr>
-            `
-          }
+  ${
+    historyRows ||
+    `
+      <tr>
+        <td colspan="6">
+          Nenhum acesso encontrado para os filtros selecionados.
+        </td>
+      </tr>
+    `
+  }
+
+</tbody>
 
         </tbody>
 
@@ -2448,6 +2564,44 @@ document
     renderAccesses
   );
 
+/* =========================================================
+   FILTROS DO HISTÓRICO DE ACESSOS
+   ========================================================= */
+
+document
+  .getElementById("accessHistorySearch")
+  ?.addEventListener(
+    "input",
+    renderAccesses
+  );
+
+document
+  .getElementById("accessHistoryStart")
+  ?.addEventListener(
+    "change",
+    renderAccesses
+  );
+
+document
+  .getElementById("accessHistoryEnd")
+  ?.addEventListener(
+    "change",
+    renderAccesses
+  );
+
+document
+  .getElementById("accessHistoryType")
+  ?.addEventListener(
+    "change",
+    renderAccesses
+  );
+
+document
+  .getElementById("accessHistoryResult")
+  ?.addEventListener(
+    "change",
+    renderAccesses
+  );
 
 /* =========================================================
    FINANCEIRO - CONTROLE DE LANÇAMENTOS

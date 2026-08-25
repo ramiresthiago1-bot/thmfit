@@ -712,6 +712,58 @@
       Histórico de acessos
     </div>
 
+    <div class="toolbar">
+
+      <input
+        id="accessHistorySearch"
+        type="search"
+        placeholder="🔎 Buscar aluno ou matrícula"
+      >
+
+      <input
+        id="accessHistoryStart"
+        type="date"
+      >
+
+      <input
+        id="accessHistoryEnd"
+        type="date"
+      >
+
+      <select id="accessHistoryType">
+
+        <option value="todos">
+          Todos os tipos
+        </option>
+
+        <option value="entrada">
+          Entrada
+        </option>
+
+        <option value="saida">
+          Saída
+        </option>
+
+      </select>
+
+      <select id="accessHistoryResult">
+
+        <option value="todos">
+          Todos os resultados
+        </option>
+
+        <option value="liberado">
+          Liberado
+        </option>
+
+        <option value="bloqueado">
+          Bloqueado
+        </option>
+
+      </select>
+
+    </div>    
+
     <div
       id="accessHistoryTable"
       class="table-wrap"
