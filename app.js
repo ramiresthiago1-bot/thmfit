@@ -1722,6 +1722,55 @@ function getAutomaticAccessDecision(student) {
   };
 
 }
+/* =========================================================
+   TOPDATA - PREPARAÇÃO PARA CONSULTA POR MATRÍCULA
+   ========================================================= */
+
+function checkAccessByMatricula(matricula) {
+
+  const normalizedMatricula =
+    String(matricula || "")
+      .trim();
+
+  if (!normalizedMatricula) {
+    return {
+      resultado: "bloqueado",
+      motivo: "Matrícula não informada",
+      aluno: null
+    };
+  }
+
+  const student =
+    studentsCache.find(student =>
+      String(student.matricula || "")
+        .trim() ===
+      normalizedMatricula
+    );
+
+  if (!student) {
+    return {
+      resultado: "bloqueado",
+      motivo: "Matrícula não encontrada",
+      aluno: null
+    };
+  }
+
+  const decision =
+    getAutomaticAccessDecision(
+      student
+    );
+
+  return {
+    resultado:
+      decision.resultado,
+
+    motivo:
+      decision.motivo,
+
+    aluno:
+      student
+  };
+}
 
 /* Carregar acessos */
 async function loadAccesses() {
@@ -2966,6 +3015,9 @@ financeCache =
     ) || "[]"
   );
 
+window.accessFinancialCache =
+    financeCache;
+
 renderFinance();
 renderFinanceCharts();
 return;
@@ -2999,6 +3051,9 @@ return;
 
   financeCache =
     result.data || [];
+
+window.accessFinancialCache =
+    financeCache;    
 
   renderFinance();
 renderFinanceCharts();
@@ -3884,3 +3939,6 @@ function renderFinanceCharts() {
     });
 
 }
+/* =========================================================
+   TESTE TEMPORÁRIO - CONSULTA POR MATRÍCULA
+   ========================================================= */
