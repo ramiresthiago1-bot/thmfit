@@ -2289,7 +2289,145 @@ function renderAccesses() {
     </table>
 
   `;
+  /*
+    Histórico de acessos
+  */
 
+  const historyTable =
+    document.getElementById(
+      "accessHistoryTable"
+    );
+
+  if (historyTable) {
+
+    const historyRows =
+      [...accessCache]
+        .sort(
+          (a, b) =>
+            new Date(b.ocorrido_em) -
+            new Date(a.ocorrido_em)
+        )
+        .map(access => {
+
+          const student =
+            studentsCache.find(
+              student =>
+                student.id ===
+                access.aluno_id
+            );
+
+          const studentName =
+            student?.nome ||
+            "Aluno não encontrado";
+
+          const studentMatricula =
+            student?.matricula ||
+            "—";
+
+          const occurredAt =
+            access.ocorrido_em
+              ? new Date(
+                  access.ocorrido_em
+                ).toLocaleString(
+                  "pt-BR"
+                )
+              : "—";
+
+          const type =
+            access.tipo === "saida"
+              ? "Saída"
+              : "Entrada";
+
+          const result =
+            access.resultado ===
+            "bloqueado"
+              ? "Bloqueado"
+              : "Liberado";
+
+          const resultClass =
+            access.resultado ===
+            "bloqueado"
+              ? "inativo"
+              : "ativo";
+
+          const equipment =
+            access.equipamento ||
+            "—";
+
+          return `
+            <tr>
+
+              <td>
+                ${esc(occurredAt)}
+              </td>
+
+              <td>
+                ${esc(
+                  studentMatricula
+                )}
+              </td>
+
+              <td>
+                <strong>
+                  ${esc(
+                    studentName
+                  )}
+                </strong>
+              </td>
+
+              <td>
+                ${esc(type)}
+              </td>
+
+              <td>
+                <span
+                  class="status ${resultClass}"
+                >
+                  ${esc(result)}
+                </span>
+              </td>
+
+              <td>
+                ${esc(equipment)}
+              </td>
+
+            </tr>
+          `;
+        })
+        .join("");
+
+    historyTable.innerHTML = `
+      <table class="table">
+
+        <thead>
+          <tr>
+            <th>Data/Hora</th>
+            <th>Matrícula</th>
+            <th>Aluno</th>
+            <th>Tipo</th>
+            <th>Resultado</th>
+            <th>Equipamento</th>
+          </tr>
+        </thead>
+
+        <tbody>
+
+          ${
+            historyRows ||
+            `
+              <tr>
+                <td colspan="6">
+                  Nenhum acesso registrado.
+                </td>
+              </tr>
+            `
+          }
+
+        </tbody>
+
+      </table>
+    `;
+  }
 }
 
 
