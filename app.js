@@ -1266,6 +1266,154 @@ if (checkAccessBtn) {
 
 }
 
+/* =========================================================
+   REGISTRAR RESULTADO DA SIMULAÇÃO TOPDATA
+   ========================================================= */
+
+async function registerTopdataAccess(
+  student,
+  decision
+) {
+  if (!student) return;
+
+  const accessData = {
+    aluno_id: student.id,
+    equipamento: "Simulação Topdata",
+    tipo: "entrada",
+    resultado: decision.resultado,
+    ocorrido_em: new Date().toISOString(),
+    origem: "topdata_simulacao"
+  };
+
+  if (demoMode) {
+
+    accessCache.unshift({
+      id:
+        "topdata-demo-" +
+        Date.now(),
+      ...accessData
+    });
+
+    renderAccesses();
+
+    return;
+  }
+
+  const {
+    data,
+    error
+  } = await client
+    .from("acessos")
+    .insert(accessData)
+    .select()
+    .single();
+
+  if (error) {
+    console.error(
+      "Erro ao registrar simulação Topdata:",
+      error
+    );
+
+    toast(
+      "Não foi possível registrar o acesso no histórico.",
+      true
+    );
+
+    return;
+  }
+
+  accessCache.unshift(data);
+
+  renderAccesses();
+}
+
+/* =========================================================
+   SIMULAÇÃO TOPDATA - CONSULTA POR MATRÍCULA
+   ========================================================= */
+
+const topdataCheckBtn =
+  document.getElementById("topdataCheckBtn");
+
+if (topdataCheckBtn) {
+topdataCheckBtn.onclick = async () => {
+
+    const matricula =
+      document.getElementById(
+        "topdataMatricula"
+      )?.value.trim();
+
+    const resultBox =
+      document.getElementById(
+        "topdataResult"
+      );
+
+    if (!matricula) {
+
+      if (resultBox) {
+        resultBox.classList.remove("hidden");
+
+        resultBox.innerHTML = `
+          <strong>⚠️ Matrícula não informada</strong>
+          <p>Digite uma matrícula para verificar o acesso.</p>
+        `;
+      }
+
+      return;
+    }
+
+    const decision =
+      checkAccessByMatricula(
+        matricula
+      );
+if (decision.aluno) {
+  await registerTopdataAccess(
+    decision.aluno,
+    decision
+  );
+}
+    if (!resultBox) return;
+
+    resultBox.classList.remove(
+      "hidden"
+    );
+
+    const liberado =
+      decision.resultado ===
+      "liberado";
+
+    resultBox.innerHTML = `
+      <h3>
+        ${
+          liberado
+            ? "🟢 ACESSO LIBERADO"
+            : "🔴 ACESSO BLOQUEADO"
+        }
+      </h3>
+
+      ${
+        decision.aluno
+          ? `
+            <p>
+              <strong>Aluno:</strong>
+              ${decision.aluno.nome || "—"}
+            </p>
+
+            <p>
+              <strong>Matrícula:</strong>
+              ${decision.aluno.matricula || matricula}
+            </p>
+          `
+          : ""
+      }
+
+      <p>
+        <strong>Motivo:</strong>
+        ${decision.motivo}
+      </p>
+    `;
+  };
+}
+
 /* Salvar acesso no Supabase */
 
 async function saveAccess(event) {
