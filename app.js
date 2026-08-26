@@ -2664,7 +2664,12 @@ function renderAccesses() {
           const equipment =
             access.equipamento ||
             "—";
-
+const origin =
+  access.origem === "topdata_simulacao"
+    ? "Simulação Topdata"
+    : access.origem === "manual"
+      ? "Manual"
+      : "—";
           return `
             <tr>
 
@@ -2699,8 +2704,11 @@ function renderAccesses() {
               </td>
 
               <td>
-                ${esc(equipment)}
-              </td>
+  ${esc(equipment)}
+</td>
+<td>
+  ${esc(origin)}
+</td>
 
             </tr>
           `;
@@ -2717,7 +2725,8 @@ function renderAccesses() {
             <th>Aluno</th>
             <th>Tipo</th>
             <th>Resultado</th>
-            <th>Equipamento</th>
+<th>Equipamento</th>
+<th>Origem</th>
           </tr>
         </thead>
 
