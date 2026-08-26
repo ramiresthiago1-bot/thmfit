@@ -76,6 +76,37 @@ Atualmente o sistema trabalha com simulação manual e regras internas de autori
 A integração física com o equipamento será desenvolvida em uma etapa posterior.
 
 ---
+---
+
+## 📸 Demonstração do sistema
+
+### Dashboard
+
+![Dashboard do THM FIT](imagens/portfolio/dashboard.png)
+
+### Gestão de alunos
+
+![Cadastro de alunos do THM FIT](imagens/portfolio/cadastro-aluno.png)
+
+### Financeiro
+
+![Módulo financeiro do THM FIT](imagens/portfolio/financeiro.png)
+
+### Lançamento financeiro
+
+![Lançamento financeiro do THM FIT](imagens/portfolio/lancamento-financeiro.png)
+
+### Histórico financeiro
+
+![Histórico financeiro do THM FIT](imagens/portfolio/historico-financeiro.png)
+
+### Controle de acessos
+
+![Controle de acessos do THM FIT](imagens/portfolio/acessos.png)
+
+### Registro de acesso
+
+![Registro de acesso do THM FIT](imagens/portfolio/registro-acesso.png)
 
 ## 🛠️ Tecnologias utilizadas
 
