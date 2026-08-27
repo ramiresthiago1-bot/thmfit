@@ -839,18 +839,377 @@
 
 <section id="comercialPage" class="page hidden">
 
-  <div class="placeholder">
+  <div class="page-header">
 
-    <h2>Comercial</h2>
+    <div>
+      <h2>Comercial</h2>
+      <p>
+        Gerencie leads, contatos e oportunidades
+        de novos alunos.
+      </p>
+    </div>
 
-    <p>
-      Módulo preparado para leads,
-      contatos, vendas e conversões.
-    </p>
+    <button
+      id="newLeadBtn"
+      class="primary-btn"
+      type="button"
+    >
+      + Novo Lead
+    </button>
+
+  </div>
+
+
+  <!-- INDICADORES -->
+
+  <div class="stats-grid">
+
+    <div class="stat-card">
+      <span>Total de Leads</span>
+      <strong id="commercialTotalLeads">
+        0
+      </strong>
+    </div>
+
+    <div class="stat-card">
+      <span>Novos Leads</span>
+      <strong id="commercialNewLeads">
+        0
+      </strong>
+    </div>
+
+    <div class="stat-card">
+      <span>Interessados</span>
+      <strong id="commercialInterestedLeads">
+        0
+      </strong>
+    </div>
+
+    <div class="stat-card">
+      <span>Convertidos</span>
+      <strong id="commercialConvertedLeads">
+        0
+      </strong>
+    </div>
+
+  </div>
+
+
+  <!-- FILTROS -->
+
+  <div class="filters">
+
+    <input
+      type="text"
+      id="commercialSearch"
+      placeholder="Buscar por nome, telefone ou e-mail"
+    />
+
+    <select id="commercialStatusFilter">
+
+      <option value="">
+        Todos os status
+      </option>
+
+      <option value="Novo">
+        Novo
+      </option>
+
+      <option value="Em contato">
+        Em contato
+      </option>
+
+      <option value="Interessado">
+        Interessado
+      </option>
+
+      <option value="Matriculado">
+        Matriculado
+      </option>
+
+      <option value="Perdido">
+        Perdido
+      </option>
+
+    </select>
+
+  </div>
+
+
+  <!-- TABELA -->
+
+  <div class="table-container">
+
+    <table>
+
+      <thead>
+
+        <tr>
+          <th>Nome</th>
+          <th>Telefone</th>
+          <th>Objetivo</th>
+          <th>Plano</th>
+          <th>Status</th>
+          <th>Origem</th>
+          <th>Data</th>
+          <th>Ações</th>
+        </tr>
+
+      </thead>
+
+      <tbody id="commercialTableBody">
+
+        <tr>
+          <td
+            colspan="8"
+            class="empty-row"
+          >
+            Nenhum lead cadastrado.
+          </td>
+        </tr>
+
+      </tbody>
+
+    </table>
 
   </div>
 
 </section>
+
+
+<!-- MODAL COMERCIAL -->
+
+<div
+  id="leadModal"
+  class="modal hidden"
+>
+
+  <div class="modal-content">
+
+    <div class="modal-header">
+
+      <h2 id="leadModalTitle">
+        Novo Lead
+      </h2>
+
+      <button
+        id="closeLeadModalBtn"
+        class="close-btn"
+        type="button"
+      >
+        ×
+      </button>
+
+    </div>
+
+
+    <form id="leadForm">
+
+      <input
+        type="hidden"
+        id="leadId"
+      />
+
+
+      <div class="form-grid">
+
+        <div class="form-group">
+
+          <label>Nome completo *</label>
+
+          <input
+            type="text"
+            id="leadNome"
+            required
+          />
+
+        </div>
+
+
+        <div class="form-group">
+
+          <label>Telefone</label>
+
+          <input
+            type="text"
+            id="leadTelefone"
+          />
+
+        </div>
+
+
+        <div class="form-group">
+
+          <label>E-mail</label>
+
+          <input
+            type="email"
+            id="leadEmail"
+          />
+
+        </div>
+
+
+        <div class="form-group">
+
+          <label>Objetivo</label>
+
+          <select id="leadObjetivo">
+
+            <option value="">
+              Selecione
+            </option>
+
+            <option value="Hipertrofia">
+              Hipertrofia
+            </option>
+
+            <option value="Emagrecimento">
+              Emagrecimento
+            </option>
+
+            <option value="Condicionamento">
+              Condicionamento
+            </option>
+
+            <option value="Força">
+              Força
+            </option>
+
+            <option value="Qualidade de vida">
+              Qualidade de vida
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <div class="form-group">
+
+          <label>Plano de interesse</label>
+
+          <select id="leadPlano">
+
+            <option value="">
+              Selecione
+            </option>
+
+            <option value="Mensal">
+              Mensal
+            </option>
+
+            <option value="Trimestral">
+              Trimestral
+            </option>
+
+            <option value="Semestral">
+              Semestral
+            </option>
+
+            <option value="Anual">
+              Anual
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <div class="form-group">
+
+          <label>Status</label>
+
+          <select id="leadStatus">
+
+            <option value="Novo">
+              Novo
+            </option>
+
+            <option value="Em contato">
+              Em contato
+            </option>
+
+            <option value="Interessado">
+              Interessado
+            </option>
+
+            <option value="Matriculado">
+              Matriculado
+            </option>
+
+            <option value="Perdido">
+              Perdido
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <div class="form-group">
+
+          <label>Origem do lead</label>
+
+          <input
+            type="text"
+            id="leadOrigem"
+            placeholder="Ex.: Instagram, indicação, WhatsApp"
+          />
+
+        </div>
+
+
+        <div class="form-group">
+
+          <label>Data do contato</label>
+
+          <input
+            type="date"
+            id="leadDataContato"
+          />
+
+        </div>
+
+      </div>
+
+
+      <div class="form-group">
+
+        <label>Observações</label>
+
+        <textarea
+          id="leadObservacoes"
+          rows="4"
+        ></textarea>
+
+      </div>
+
+
+      <div class="modal-actions">
+
+        <button
+          id="cancelLeadBtn"
+          class="secondary-btn"
+          type="button"
+        >
+          Cancelar
+        </button>
+
+        <button
+          class="primary-btn"
+          type="submit"
+        >
+          Salvar Lead
+        </button>
+
+      </div>
+
+    </form>
+
+  </div>
+
+</div>
 
 
 <!-- TREINOS -->

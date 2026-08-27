@@ -1,1 +1,352 @@
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f1f3f6;color:#263238}.hidden{display:none!important}.login-screen{min-height:100vh;display:grid;place-items:center;background:linear-gradient(135deg,#0675d1,#004b9b);padding:20px}.login-card{width:min(420px,100%);background:#fff;border-radius:18px;padding:36px;box-shadow:0 20px 60px #0004}.brand-mark{width:58px;height:58px;border-radius:16px;background:#0875d1;color:#fff;display:grid;place-items:center;font-weight:900}.login-card h1{margin:18px 0 5px}.login-card p{color:#6d7780}.login-card small{display:block;color:#87929b;text-align:center;margin-top:14px}label{display:flex;flex-direction:column;gap:7px;font-size:13px;font-weight:600;color:#52606a;margin-bottom:14px}input,select{height:42px;border:1px solid #d7dde2;border-radius:8px;padding:0 12px;font:inherit;background:#fff;color:#263238}input:focus,select:focus{outline:2px solid #0875d122;border-color:#0875d1}button{border:0;cursor:pointer;font:inherit}.primary,.secondary{height:42px;border-radius:8px;padding:0 18px;font-weight:700}.primary{background:#0875d1;color:#fff}.secondary{background:#edf1f4;color:#33424c}.full{width:100%;margin-top:10px}.topbar{height:54px;background:#0670c9;color:#fff;display:flex;align-items:center;padding:0 18px;gap:22px;box-shadow:0 2px 7px #0002}.brand{font-weight:900;white-space:nowrap}.main-nav{display:flex;gap:2px;align-items:center;flex:1;overflow:auto}.main-nav button{background:transparent;color:#eaf5ff;padding:17px 11px;font-size:13px;white-space:nowrap}.main-nav button:hover,.main-nav button.active{background:#ffffff18}.top-actions{display:flex;align-items:center;gap:10px;font-size:13px}.icon-btn{background:transparent;color:inherit;font-size:22px;padding:4px}.content{padding:18px 4%;max-width:1500px;margin:auto}.breadcrumb{font-size:13px;color:#82909a;border-bottom:1px solid #d6dce1;padding-bottom:15px}.breadcrumb span{padding:0 8px}.page{padding-top:22px}.page-heading{display:flex;justify-content:space-between;align-items:center;gap:15px;margin-bottom:20px}.page-heading h2{margin:0 0 5px}.page-heading p{margin:0;color:#77838c}.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}.stat{background:#fff;border:1px solid #e2e7ea;border-radius:10px;padding:20px;display:grid;grid-template-columns:44px 1fr;column-gap:12px}.stat span{grid-row:1/3;font-size:28px}.stat b{font-size:27px;color:#0875d1}.stat small{color:#7a8790}.panel{background:#fff;border:1px solid #e0e5e8;border-radius:10px;overflow:hidden}.panel-title{font-weight:800;padding:16px;border-bottom:1px solid #e8ecef}.simple-item{display:flex;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #edf0f2}.toolbar{display:flex;gap:10px;margin-bottom:14px}.toolbar input{flex:1}.table-wrap{overflow:auto}.table{width:100%;border-collapse:collapse}.table th,.table td{padding:13px 15px;text-align:left;border-bottom:1px solid #edf0f2;font-size:13px;white-space:nowrap}.table th{background:#fafbfc;color:#6d7982}.status{display:inline-flex;padding:5px 9px;border-radius:999px;font-size:11px;font-weight:800}.status.ativo{background:#e4f7eb;color:#168043}.status.inativo{background:#f0f2f4;color:#6c747a}.mini{height:32px;padding:0 10px;border-radius:6px;background:#edf2f5}.placeholder{background:#fff;border:1px solid #e0e5e8;border-radius:10px;padding:30px}.modal{position:fixed;inset:0;background:#0008;display:grid;place-items:center;padding:20px;z-index:10}.modal-card{background:#fff;width:min(700px,100%);max-height:90vh;overflow:auto;border-radius:14px}.modal-head{display:flex;justify-content:space-between;padding:22px;border-bottom:1px solid #e8ecef}.modal-head h2{margin:0 0 4px}.modal-head p{margin:0;color:#7c878f;font-size:13px}.form-grid{padding:22px;display:grid;grid-template-columns:1fr 1fr;gap:0 14px}.span-2{grid-column:1/-1}.form-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:8px}.toast{position:fixed;right:20px;bottom:20px;background:#263238;color:#fff;padding:13px 16px;border-radius:9px;z-index:20;display:none}.toast.show{display:block}.toast.error{background:#b42318}@media(max-width:900px){.main-nav{display:none}.stats-grid{grid-template-columns:1fr 1fr}}@media(max-width:600px){.stats-grid{grid-template-columns:1fr}.form-grid{grid-template-columns:1fr}.span-2{grid-column:auto}.page-heading{align-items:flex-start;flex-direction:column}.toolbar{flex-direction:column}}
+/* =========================================================
+   THM FIT - VISUAL DO MODULO COMERCIAL
+   ========================================================= */
+
+#comercialPage {
+  padding-bottom: 30px;
+}
+
+/* CABEÇALHO DA TELA */
+
+#comercialPage .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+#comercialPage .page-header h2 {
+  margin: 0 0 6px;
+  font-size: 28px;
+  font-weight: 800;
+  color: #263238;
+}
+
+#comercialPage .page-header p {
+  margin: 0;
+  color: #77838c;
+  font-size: 14px;
+}
+
+/* BOTÃO PRINCIPAL */
+
+#comercialPage .primary-btn {
+  height: 42px;
+  padding: 0 18px;
+  border-radius: 9px;
+  background: #0875d1;
+  color: #fff;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: 0.2s ease;
+}
+
+#comercialPage .primary-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(8, 117, 209, 0.22);
+}
+
+/* INDICADORES */
+
+#comercialPage .stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+#comercialPage .stat-card {
+  background: #fff;
+  border: 1px solid #e1e6ea;
+  border-radius: 14px;
+  padding: 20px;
+  min-height: 110px;
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+}
+
+#comercialPage .stat-card span {
+  color: #77838c;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+#comercialPage .stat-card strong {
+  color: #0875d1;
+  font-size: 30px;
+  line-height: 1;
+}
+
+/* FILTROS */
+
+#comercialPage .filters {
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+#comercialPage .filters input,
+#comercialPage .filters select {
+  width: 100%;
+}
+
+/* TABELA */
+
+#comercialPage .table-container {
+  background: #fff;
+  border: 1px solid #e1e6ea;
+  border-radius: 14px;
+  overflow-x: auto;
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.05);
+}
+
+#comercialPage .table-container table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
+}
+
+#comercialPage .table-container th {
+  padding: 14px 15px;
+  background: #f8fafb;
+  color: #66747e;
+  font-size: 12px;
+  font-weight: 800;
+  text-align: left;
+  border-bottom: 1px solid #e5e9ec;
+  white-space: nowrap;
+}
+
+#comercialPage .table-container td {
+  padding: 14px 15px;
+  color: #394750;
+  font-size: 13px;
+  border-bottom: 1px solid #edf0f2;
+  white-space: nowrap;
+}
+
+#comercialPage .table-container tbody tr:hover {
+  background: #fafcff;
+}
+
+#comercialPage .empty-row {
+  text-align: center;
+  color: #8a959d;
+  padding: 35px !important;
+}
+
+/* =========================================================
+   MODAL COMERCIAL - LEAD
+   ========================================================= */
+
+/* O HTML usa #leadModal + .modal-content.
+   Portanto o CSS precisa atingir exatamente essas classes. */
+
+#leadModal .modal-content {
+  width: min(900px, 94vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.20);
+  padding: 0;
+}
+
+/* CABEÇALHO DO MODAL */
+
+#leadModal .modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  padding: 22px 28px;
+  border-bottom: 1px solid #e7ebee;
+  background: #fff;
+}
+
+#leadModal .modal-header h2 {
+  margin: 0;
+  color: #263238;
+  font-size: 24px;
+  font-weight: 800;
+}
+
+#leadModal .close-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #f1f3f5;
+  color: #5d6971;
+  font-size: 24px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+#leadModal .close-btn:hover {
+  background: #e5e9ec;
+  color: #263238;
+}
+
+/* FORMULÁRIO */
+
+#leadModal form {
+  padding: 0;
+}
+
+#leadModal .form-grid {
+  padding: 24px 28px 8px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+/* CAMPOS */
+
+#leadModal .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+#leadModal .form-group label {
+  margin: 0;
+  color: #52606a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+#leadModal .form-group input,
+#leadModal .form-group select,
+#leadModal .form-group textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #d7dde2;
+  border-radius: 9px;
+  background: #fff;
+  color: #263238;
+  font-size: 14px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+#leadModal .form-group input,
+#leadModal .form-group select {
+  height: 42px;
+  padding: 0 12px;
+}
+
+#leadModal .form-group textarea {
+  min-height: 110px;
+  padding: 11px 12px;
+  resize: vertical;
+}
+
+#leadModal .form-group input:focus,
+#leadModal .form-group select:focus,
+#leadModal .form-group textarea:focus {
+  outline: none;
+  border-color: #0875d1;
+  box-shadow: 0 0 0 3px rgba(8, 117, 209, 0.10);
+}
+
+/* OBSERVAÇÕES */
+
+#leadModal form > .form-group {
+  padding: 8px 28px 0;
+}
+
+/* AÇÕES */
+
+#leadModal .modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 20px 28px;
+  border-top: 1px solid #e7ebee;
+  background: #fafbfc;
+}
+
+#leadModal .secondary-btn,
+#leadModal .primary-btn {
+  height: 42px;
+  padding: 0 18px;
+  border-radius: 9px;
+  font-weight: 700;
+}
+
+#leadModal .secondary-btn {
+  background: #edf1f4;
+  color: #33424c;
+}
+
+#leadModal .secondary-btn:hover {
+  background: #e2e7ea;
+}
+
+#leadModal .primary-btn {
+  background: #0875d1;
+  color: #fff;
+}
+
+#leadModal .primary-btn:hover {
+  background: #0668b9;
+}
+
+/* RESPONSIVO */
+
+@media (max-width: 900px) {
+
+  #comercialPage .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  #comercialPage .filters {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+
+  #comercialPage .page-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  #comercialPage .stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  #leadModal .modal-content {
+    width: 96vw;
+    max-height: 94vh;
+    border-radius: 14px;
+  }
+
+  #leadModal .modal-header {
+    padding: 18px 20px;
+  }
+
+  #leadModal .form-grid {
+    grid-template-columns: 1fr;
+    padding: 20px 20px 8px;
+    gap: 16px;
+  }
+
+  #leadModal form > .form-group {
+    padding: 8px 20px 0;
+  }
+
+  #leadModal .modal-actions {
+    padding: 18px 20px;
+  }
+}

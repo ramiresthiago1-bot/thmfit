@@ -3774,8 +3774,491 @@ document
     renderFinance
   );
 
+/* =========================================================
+   COMERCIAL - LEADS
+   ========================================================= */
+
+let leadsCache = [];
+let editingLeadId = null;
+
+async function loadLeads() {
+
+  if (demoMode) {
+    leadsCache = [];
+    renderLeads();
+    return;
+  }
+
+  const { data, error } = await client
+    .from("leads")
+    .select("*")
+    .order("created_at", {
+      ascending: false
+    });
+
+  if (error) {
+    console.error("Erro ao carregar leads:", error);
+    return;
+  }
+
+  leadsCache = data || [];
+
+  renderLeads();
+}
+
+function renderLeads() {
+  const tbody = document.getElementById("commercialTableBody");
+  if (!tbody) return;
+
+  const search =
+    (
+      document.getElementById("commercialSearch")?.value || ""
+    )
+      .toLowerCase()
+      .trim();
+
+  const status =
+    document.getElementById("commercialStatusFilter")?.value || "";
+
+  const filtered = leadsCache.filter(lead => {
+    const matchesSearch =
+      !search ||
+      String(lead.nome || "")
+        .toLowerCase()
+        .includes(search) ||
+      String(lead.telefone || "")
+        .toLowerCase()
+        .includes(search) ||
+      String(lead.email || "")
+        .toLowerCase()
+        .includes(search);
+
+    const matchesStatus =
+      !status ||
+      lead.status === status;
+
+    return matchesSearch && matchesStatus;
+  });
+
+  if (!filtered.length) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8" class="empty-row">
+          Nenhum lead cadastrado.
+        </td>
+      </tr>
+    `;
+  } else {
+    tbody.innerHTML = filtered.map(lead => `
+      <tr>
+        <td>${lead.nome || "-"}</td>
+
+        <td>${lead.telefone || "-"}</td>
+
+        <td>${lead.objetivo || "-"}</td>
+
+        <td>${lead.plano_interesse || "-"}</td>
+
+        <td>${lead.status || "-"}</td>
+
+        <td>${lead.origem || "-"}</td>
+
+        <td>
+          ${
+            lead.data_contato
+              ? new Date(
+                  lead.data_contato + "T00:00:00"
+                ).toLocaleDateString("pt-BR")
+              : "-"
+          }
+        </td>
+
+        <td>
+          <button
+            type="button"
+            onclick="editLead('${lead.id}')"
+          >
+            Editar
+          </button>
+
+          <button
+            type="button"
+            onclick="deleteLead('${lead.id}')"
+          >
+            Excluir
+          </button>
+        </td>
+      </tr>
+    `).join("");
+  }
+
+  updateLeadStats();
+}
+
+
+function updateLeadStats() {
+
+  const total =
+    leadsCache.length;
+
+  const novos =
+    leadsCache.filter(
+      lead => lead.status === "Novo"
+    ).length;
+
+  const interessados =
+    leadsCache.filter(
+      lead => lead.status === "Interessado"
+    ).length;
+
+  const matriculados =
+    leadsCache.filter(
+      lead => lead.status === "Matriculado"
+    ).length;
+
+
+  const totalEl =
+    document.getElementById("leadTotal");
+
+  const novosEl =
+    document.getElementById("leadNovos");
+
+  const interessadosEl =
+    document.getElementById("leadInteressados");
+
+  const matriculadosEl =
+    document.getElementById("leadMatriculados");
+
+
+  if (totalEl)
+    totalEl.textContent = total;
+
+  if (novosEl)
+    novosEl.textContent = novos;
+
+  if (interessadosEl)
+    interessadosEl.textContent = interessados;
+
+  if (matriculadosEl)
+    matriculadosEl.textContent = matriculados;
+}
+
+
+async function saveLead() {
+
+  const lead = {
+
+    nome:
+      document.getElementById("leadNome")
+        ?.value.trim(),
+
+    telefone:
+      document.getElementById("leadTelefone")
+        ?.value.trim() || null,
+
+    email:
+      document.getElementById("leadEmail")
+        ?.value.trim() || null,
+
+    objetivo:
+      document.getElementById("leadObjetivo")
+        ?.value || null,
+
+    plano_interesse:
+      document.getElementById("leadPlano")
+        ?.value || null,
+
+    status:
+      document.getElementById("leadStatus")
+        ?.value || "Novo",
+
+    origem:
+      document.getElementById("leadOrigem")
+        ?.value.trim() || null,
+
+    data_contato:
+      document.getElementById("leadDataContato")
+        ?.value || null,
+
+    observacoes:
+      document.getElementById("leadObservacoes")
+        ?.value.trim() || null
+  };
+
+
+  if (!lead.nome) {
+
+    alert("Informe o nome do lead.");
+
+    return;
+  }
+
+
+  if (demoMode) {
+
+    alert(
+      "O cadastro de leads no modo demonstração será implementado posteriormente."
+    );
+
+    return;
+  }
+
+
+  let result;
+
+
+  if (editingLeadId) {
+
+    result =
+      await client
+        .from("leads")
+        .update(lead)
+        .eq("id", editingLeadId);
+
+  } else {
+
+    result =
+      await client
+        .from("leads")
+        .insert([lead]);
+  }
+
+
+  if (result.error) {
+
+    console.error(
+      "Erro ao salvar lead:",
+      result.error
+    );
+
+    alert(
+      "Não foi possível salvar o lead."
+    );
+
+    return;
+  }
+
+
+  editingLeadId = null;
+
+  closeLeadModal();
+
+  await loadLeads();
+}
+
+
+function editLead(id) {
+
+  const lead =
+    leadsCache.find(
+      item => item.id === id
+    );
+
+  if (!lead) return;
+
+  editingLeadId = id;
+
+
+  document.getElementById("leadNome").value =
+    lead.nome || "";
+
+  document.getElementById("leadTelefone").value =
+    lead.telefone || "";
+
+  document.getElementById("leadEmail").value =
+    lead.email || "";
+
+  document.getElementById("leadObjetivo").value =
+    lead.objetivo || "";
+
+  document.getElementById("leadPlano").value =
+    lead.plano_interesse || "";
+
+  document.getElementById("leadStatus").value =
+    lead.status || "Novo";
+
+  document.getElementById("leadOrigem").value =
+    lead.origem || "";
+
+  document.getElementById("leadDataContato").value =
+    lead.data_contato || "";
+
+  document.getElementById("leadObservacoes").value =
+    lead.observacoes || "";
+
+
+  const modal =
+    document.getElementById("leadModal");
+
+  if (modal) {
+    modal.classList.remove("hidden");
+  }
+
+
+  const title =
+    document.getElementById("leadModalTitle");
+
+  if (title) {
+    title.textContent = "Editar Lead";
+  }
+}
+
+
+async function deleteLead(id) {
+
+  if (
+    !confirm(
+      "Deseja realmente excluir este lead?"
+    )
+  ) {
+    return;
+  }
+
+
+  if (demoMode) return;
+
+
+  const { error } =
+    await client
+      .from("leads")
+      .delete()
+      .eq("id", id);
+
+
+  if (error) {
+
+    console.error(
+      "Erro ao excluir lead:",
+      error
+    );
+
+    alert(
+      "Não foi possível excluir o lead."
+    );
+
+    return;
+  }
+
+
+  await loadLeads();
+}
+
+
+function closeLeadModal() {
+
+  const modal =
+    document.getElementById("leadModal");
+
+  if (modal) {
+    modal.classList.add("hidden");
+  }
+
+  editingLeadId = null;
+
+  const title =
+    document.getElementById("leadModalTitle");
+
+  if (title) {
+    title.textContent = "Novo Lead";
+  }
+}
+
+
+function initCommercialEvents() {
+
+  const newLeadBtn =
+    document.getElementById("newLeadBtn");
+
+  const cancelLeadBtn =
+    document.getElementById("cancelLeadBtn");
+
+  const closeLeadModalBtn =
+    document.getElementById("closeLeadModalBtn");
+
+  const leadSearch =
+    document.getElementById("leadSearch");
+
+  const leadStatusFilter =
+    document.getElementById("leadStatusFilter");
+
+  const leadForm =
+    document.getElementById("leadForm");
+
+
+  if (newLeadBtn) {
+
+    newLeadBtn.onclick = () => {
+
+      editingLeadId = null;
+
+      if (leadForm) {
+        leadForm.reset();
+      }
+
+      const title =
+        document.getElementById("leadModalTitle");
+
+      if (title) {
+        title.textContent = "Novo Lead";
+      }
+
+      const modal =
+        document.getElementById("leadModal");
+
+      if (modal) {
+        modal.classList.remove("hidden");
+      }
+    };
+  }
+
+
+  if (cancelLeadBtn) {
+    cancelLeadBtn.onclick =
+      closeLeadModal;
+  }
+
+
+  if (closeLeadModalBtn) {
+    closeLeadModalBtn.onclick =
+      closeLeadModal;
+  }
+
+
+  if (leadSearch) {
+
+    leadSearch.addEventListener(
+      "input",
+      renderLeads
+    );
+  }
+
+
+  if (leadStatusFilter) {
+
+    leadStatusFilter.addEventListener(
+      "change",
+      renderLeads
+    );
+  }
+
+
+  if (leadForm) {
+
+    leadForm.addEventListener(
+      "submit",
+      async event => {
+
+        event.preventDefault();
+
+        await saveLead();
+      }
+    );
+  }
+}  
 
 /* Inicialização */
+initCommercialEvents();
+loadLeads();
 initFinanceEvents();
 
 // =========================================================
