@@ -1230,7 +1230,13 @@
     >
       + Nova ficha
     </button>
-
+<button
+  id="generateWorkoutBtn"
+  class="secondary"
+  type="button"
+>
+  ✨ Gerar treino assistido
+</button>
   </div>
 
 
@@ -1396,6 +1402,95 @@
 
       </label>
 
+<div
+  id="workoutGeneratorOptions"
+  class="span-2 hidden"
+>
+
+  <div class="section-title span-2">
+    ✨ Parâmetros do treino assistido
+  </div>
+
+  <label>
+    Nível
+    <select id="workoutGeneratorLevel">
+      <option value="">
+        Selecione
+      </option>
+      <option value="Iniciante">
+        Iniciante
+      </option>
+      <option value="Intermediário">
+        Intermediário
+      </option>
+      <option value="Avançado">
+        Avançado
+      </option>
+    </select>
+  </label>
+
+  <label>
+    Frequência semanal
+    <select id="workoutGeneratorFrequency">
+      <option value="">
+        Selecione
+      </option>
+      <option value="2">
+        2x por semana
+      </option>
+      <option value="3">
+        3x por semana
+      </option>
+      <option value="4">
+        4x por semana
+      </option>
+      <option value="5">
+        5x por semana
+      </option>
+    </select>
+  </label>
+
+  <label>
+    Tempo por treino
+    <select id="workoutGeneratorTime">
+      <option value="">
+        Selecione
+      </option>
+      <option value="30">
+        Até 30 minutos
+      </option>
+      <option value="45">
+        Até 45 minutos
+      </option>
+      <option value="60">
+        Até 60 minutos
+      </option>
+      <option value="90">
+        Até 90 minutos
+      </option>
+    </select>
+  </label>
+
+  <label class="span-2">
+    Restrições ou observações
+    <textarea
+      id="workoutGeneratorNotes"
+      rows="3"
+      placeholder="Ex.: evitar exercícios com impacto, foco em membros inferiores..."
+    ></textarea>
+  </label>
+
+  <div class="span-2">
+    <button
+      id="buildWorkoutBtn"
+      class="primary"
+      type="button"
+    >
+      ✨ Montar sugestão de treino
+    </button>
+  </div>
+
+</div>      
 
       <div class="section-title span-2">
         Exercícios

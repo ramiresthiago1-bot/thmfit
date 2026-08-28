@@ -4434,6 +4434,10 @@ function openWorkoutModal() {
   $("workoutFormStatus").value =
     "ativo";
 
+  $("workoutGeneratorOptions")
+    ?.classList.remove(
+      "hidden"
+    );    
 
   loadWorkoutStudents();
 
@@ -4455,6 +4459,59 @@ function openWorkoutModal() {
   });
 }
 
+function openWorkoutGenerator() {
+
+  const editor =
+    $("workoutEditor");
+
+  const form =
+    $("workoutForm");
+
+  if (!editor || !form) {
+    return;
+  }
+
+
+  form.reset();
+
+
+  $("workoutId").value = "";
+
+
+  $("workoutEditorTitle").textContent =
+    "✨ Gerar treino assistido";
+
+
+  $("workoutFormStatus").value =
+    "ativo";
+
+
+  $("workoutGeneratorOptions")
+    ?.classList.remove(
+      "hidden"
+    );
+
+
+  loadWorkoutStudents();
+
+
+  $("exerciseList").innerHTML = "";
+
+
+  addExerciseRow();
+
+
+  editor.classList.remove(
+    "hidden"
+  );
+
+
+  editor.scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+
+}
 
 /* =========================================================
    CANCELAR EDIÇÃO
@@ -6197,7 +6254,16 @@ function initWorkoutEvents() {
       "click",
       openWorkoutModal
     );
-
+  $("generateWorkoutBtn")
+    ?.addEventListener(
+      "click",
+      openWorkoutGenerator
+    );
+  $("buildWorkoutBtn")
+    ?.addEventListener(
+      "click",
+      buildAssistedWorkout
+    );    
 
   $("cancelWorkoutBtn")
     ?.addEventListener(
@@ -6221,6 +6287,418 @@ function initWorkoutEvents() {
     );
 }
 
+function buildAssistedWorkout() {
+
+  const goal =
+    $("workoutGoal")?.value || "";
+
+  const level =
+    $("workoutGeneratorLevel")?.value || "";
+
+  const frequency =
+    $("workoutGeneratorFrequency")?.value || "";
+
+  const time =
+    $("workoutGeneratorTime")?.value || "";
+
+  const notes =
+    $("workoutGeneratorNotes")?.value.trim() || "";
+
+
+  if (!goal) {
+
+    return toast(
+      "Selecione o objetivo do treino.",
+      true
+    );
+
+  }
+
+
+  if (!level) {
+
+    return toast(
+      "Selecione o nível do aluno.",
+      true
+    );
+
+  }
+
+
+  if (!frequency) {
+
+    return toast(
+      "Selecione a frequência semanal.",
+      true
+    );
+
+  }
+
+
+  if (!time) {
+
+    return toast(
+      "Selecione o tempo disponível.",
+      true
+    );
+
+  }
+
+
+  const templates = {
+
+    "Hipertrofia": [
+
+      {
+        nome: "Supino reto",
+        series: 4,
+        repeticoes: "8-12",
+        descanso: "60-90s",
+        grupo: "Peito"
+      },
+
+      {
+        nome: "Puxada frontal",
+        series: 4,
+        repeticoes: "8-12",
+        descanso: "60-90s",
+        grupo: "Costas"
+      },
+
+      {
+        nome: "Agachamento livre",
+        series: 4,
+        repeticoes: "8-12",
+        descanso: "90s",
+        grupo: "Pernas"
+      },
+
+      {
+        nome: "Desenvolvimento com halteres",
+        series: 3,
+        repeticoes: "10-12",
+        descanso: "60s",
+        grupo: "Ombros"
+      },
+
+      {
+        nome: "Rosca direta",
+        series: 3,
+        repeticoes: "10-12",
+        descanso: "60s",
+        grupo: "Bíceps"
+      },
+
+      {
+        nome: "Tríceps na polia",
+        series: 3,
+        repeticoes: "10-12",
+        descanso: "60s",
+        grupo: "Tríceps"
+      }
+
+    ],
+
+
+    "Força": [
+
+      {
+        nome: "Agachamento livre",
+        series: 5,
+        repeticoes: "3-6",
+        descanso: "120-180s",
+        grupo: "Pernas"
+      },
+
+      {
+        nome: "Supino reto",
+        series: 5,
+        repeticoes: "3-6",
+        descanso: "120-180s",
+        grupo: "Peito"
+      },
+
+      {
+        nome: "Remada curvada",
+        series: 4,
+        repeticoes: "4-6",
+        descanso: "120s",
+        grupo: "Costas"
+      },
+
+      {
+        nome: "Desenvolvimento com barra",
+        series: 4,
+        repeticoes: "5-8",
+        descanso: "120s",
+        grupo: "Ombros"
+      }
+
+    ],
+
+
+    "Emagrecimento": [
+
+      {
+        nome: "Agachamento com peso corporal",
+        series: 3,
+        repeticoes: "12-15",
+        descanso: "45s",
+        grupo: "Pernas"
+      },
+
+      {
+        nome: "Supino com halteres",
+        series: 3,
+        repeticoes: "12-15",
+        descanso: "45s",
+        grupo: "Peito"
+      },
+
+      {
+        nome: "Puxada frontal",
+        series: 3,
+        repeticoes: "12-15",
+        descanso: "45s",
+        grupo: "Costas"
+      },
+
+      {
+        nome: "Avanço",
+        series: 3,
+        repeticoes: "10-12",
+        descanso: "45s",
+        grupo: "Pernas"
+      },
+
+      {
+        nome: "Desenvolvimento com halteres",
+        series: 3,
+        repeticoes: "12-15",
+        descanso: "45s",
+        grupo: "Ombros"
+      }
+
+    ],
+
+
+    "Condicionamento": [
+
+      {
+        nome: "Agachamento",
+        series: 3,
+        repeticoes: "12-15",
+        descanso: "45s",
+        grupo: "Pernas"
+      },
+
+      {
+        nome: "Flexão de braços",
+        series: 3,
+        repeticoes: "10-15",
+        descanso: "45s",
+        grupo: "Peito"
+      },
+
+      {
+        nome: "Remada baixa",
+        series: 3,
+        repeticoes: "12-15",
+        descanso: "45s",
+        grupo: "Costas"
+      },
+
+      {
+        nome: "Elevação lateral",
+        series: 3,
+        repeticoes: "12-15",
+        descanso: "45s",
+        grupo: "Ombros"
+      }
+
+    ],
+
+
+    "Qualidade de vida": [
+
+      {
+        nome: "Leg press",
+        series: 3,
+        repeticoes: "10-15",
+        descanso: "60s",
+        grupo: "Pernas"
+      },
+
+      {
+        nome: "Remada baixa",
+        series: 3,
+        repeticoes: "10-15",
+        descanso: "60s",
+        grupo: "Costas"
+      },
+
+      {
+        nome: "Supino máquina",
+        series: 3,
+        repeticoes: "10-15",
+        descanso: "60s",
+        grupo: "Peito"
+      },
+
+      {
+        nome: "Desenvolvimento máquina",
+        series: 3,
+        repeticoes: "10-15",
+        descanso: "60s",
+        grupo: "Ombros"
+      }
+
+    ],
+
+
+    "Reabilitação": [
+
+      {
+        nome: "Leg press leve",
+        series: 2,
+        repeticoes: "12-15",
+        descanso: "60s",
+        grupo: "Pernas"
+      },
+
+      {
+        nome: "Remada máquina",
+        series: 2,
+        repeticoes: "12-15",
+        descanso: "60s",
+        grupo: "Costas"
+      },
+
+      {
+        nome: "Supino máquina leve",
+        series: 2,
+        repeticoes: "12-15",
+        descanso: "60s",
+        grupo: "Peito"
+      }
+
+    ]
+
+  };
+
+
+  let selected =
+    templates[goal] ||
+    templates["Hipertrofia"];
+
+
+  if (level === "Iniciante") {
+
+    selected =
+      selected
+        .slice(0, 4)
+        .map(
+          exercise => ({
+            ...exercise,
+            series:
+              Math.min(
+                Number(exercise.series) || 3,
+                3
+              )
+          })
+        );
+
+  }
+
+
+  if (time === "30") {
+
+    selected =
+      selected.slice(0, 3);
+
+  }
+
+
+  if (time === "45") {
+
+    selected =
+      selected.slice(0, 4);
+
+  }
+
+
+  $("exerciseList").innerHTML = "";
+
+
+  selected.forEach(
+    exercise => {
+
+      addExerciseRow({
+
+        nome:
+          exercise.nome,
+
+        series:
+          exercise.series,
+
+        repeticoes:
+          exercise.repeticoes,
+
+        carga:
+          "",
+
+        descanso:
+          exercise.descanso,
+
+        observacoes:
+          exercise.grupo
+
+      });
+
+    }
+  );
+
+
+  const name =
+    $("workoutName");
+
+
+  if (
+    name &&
+    !name.value.trim()
+  ) {
+
+    name.value =
+      `Treino ${goal} - ${frequency}x`;
+
+  }
+
+
+  if (notes) {
+
+    selected.forEach(
+      exercise => {
+
+        if (
+          exercise.observacoes
+        ) {
+
+          exercise.observacoes +=
+            ` | ${notes}`;
+
+        }
+
+      }
+    );
+
+  }
+
+
+  toast(
+    "Sugestão de treino montada com sucesso."
+  );
+
+}
 
 /* =========================================================
    INICIALIZAÇÃO
