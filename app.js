@@ -5923,6 +5923,84 @@ function updateWorkoutStats() {
       totalExercises;
 
   }
+  const divisionStats =
+    $("workoutDivisionStats");
+
+  if (divisionStats) {
+
+    const divisions = [
+      "A",
+      "B",
+      "C",
+      "D",
+      "E"
+    ];
+
+    divisionStats.innerHTML =
+      divisions
+        .map(
+          division => {
+
+            const count =
+              workoutCache.reduce(
+                (
+                  total,
+                  workout
+                ) => {
+
+                  const exercises =
+                    workout
+                      .conteudo
+                      ?.exercicios;
+
+                  if (
+                    !Array.isArray(
+                      exercises
+                    )
+                  ) {
+                    return total;
+                  }
+
+                  return (
+                    total +
+                    exercises.filter(
+                      exercise =>
+                        (
+                          exercise.divisao ||
+                          "A"
+                        ) === division
+                    ).length
+                  );
+
+                },
+                0
+              );
+
+            return `
+
+              <div class="stat">
+
+                <span>
+                  🏋️
+                </span>
+
+                <b>
+                  ${count}
+                </b>
+
+                <small>
+                  Treino ${division}
+                </small>
+
+              </div>
+
+            `;
+
+          }
+        )
+        .join("");
+
+  }  
 }
 
 
