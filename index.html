@@ -1211,19 +1211,290 @@
 
 </div>
 
-
 <!-- TREINOS -->
-
 <section id="treinosPage" class="page hidden">
 
-  <div class="placeholder">
+  <div class="page-heading">
 
-    <h2>Treinos</h2>
+    <div>
+      <h2>Treinos</h2>
+      <p>
+        Gerencie fichas de treino, exercícios e evolução dos alunos.
+      </p>
+    </div>
 
-    <p>
-      Módulo preparado para fichas,
-      exercícios e geração assistida por IA.
-    </p>
+    <button
+      id="newWorkoutBtn"
+      class="primary"
+      type="button"
+    >
+      + Nova ficha
+    </button>
+
+  </div>
+
+
+  <div class="stats-grid">
+
+    <div class="stat">
+      <span>🏋️</span>
+      <b id="workoutStatTotal">0</b>
+      <small>Fichas cadastradas</small>
+    </div>
+
+    <div class="stat">
+      <span>👥</span>
+      <b id="workoutStatStudents">0</b>
+      <small>Alunos com treino</small>
+    </div>
+
+    <div class="stat">
+      <span>📋</span>
+      <b id="workoutStatExercises">0</b>
+      <small>Exercícios cadastrados</small>
+    </div>
+
+  </div>
+
+
+  <!-- EDITOR DA FICHA -->
+
+  <div
+    id="workoutEditor"
+    class="panel hidden"
+  >
+
+    <div class="panel-title">
+      <span id="workoutEditorTitle">
+        Nova ficha de treino
+      </span>
+    </div>
+
+
+    <form
+      id="workoutForm"
+      class="form-grid"
+    >
+
+      <input
+        id="workoutId"
+        type="hidden"
+      >
+
+
+      <label class="span-2">
+
+        Aluno
+
+        <select
+          id="workoutStudent"
+          required
+        >
+
+          <option value="">
+            Selecione o aluno
+          </option>
+
+        </select>
+
+      </label>
+
+
+      <label>
+
+        Nome da ficha
+
+        <input
+          id="workoutName"
+          maxlength="100"
+          placeholder="Ex.: Treino A — Hipertrofia"
+          required
+        >
+
+      </label>
+
+
+      <label>
+
+        Objetivo
+
+        <select id="workoutGoal">
+
+          <option value="">
+            Selecione
+          </option>
+
+          <option value="Hipertrofia">
+            Hipertrofia
+          </option>
+
+          <option value="Emagrecimento">
+            Emagrecimento
+          </option>
+
+          <option value="Condicionamento">
+            Condicionamento
+          </option>
+
+          <option value="Força">
+            Força
+          </option>
+
+          <option value="Qualidade de vida">
+            Qualidade de vida
+          </option>
+
+          <option value="Reabilitação">
+            Reabilitação
+          </option>
+
+        </select>
+
+      </label>
+
+
+      <label>
+
+        Status
+
+        <select id="workoutFormStatus">
+
+          <option value="ativo">
+            Ativo
+          </option>
+
+          <option value="inativo">
+            Inativo
+          </option>
+
+        </select>
+
+      </label>
+
+
+      <div class="section-title span-2">
+        Exercícios
+      </div>
+
+
+      <div
+        id="exerciseList"
+        class="span-2"
+      ></div>
+
+
+      <div class="span-2">
+
+        <button
+          id="addExerciseBtn"
+          class="secondary"
+          type="button"
+        >
+          + Adicionar exercício
+        </button>
+
+      </div>
+
+
+      <div class="form-actions span-2">
+
+        <button
+          id="cancelWorkoutBtn"
+          class="secondary"
+          type="button"
+        >
+          Cancelar
+        </button>
+
+        <button
+          class="primary"
+          type="submit"
+        >
+          Salvar ficha
+        </button>
+
+      </div>
+
+    </form>
+
+  </div>
+
+
+  <!-- LISTAGEM -->
+
+  <div class="panel">
+
+    <div class="panel-title">
+      Fichas de treino
+    </div>
+
+
+    <div class="toolbar">
+
+      <input
+        id="workoutSearch"
+        type="search"
+        placeholder="🔎 Buscar aluno"
+      >
+
+      <select id="workoutStatus">
+
+        <option value="">
+          Todos os status
+        </option>
+
+        <option value="ativo">
+          Ativos
+        </option>
+
+        <option value="inativo">
+          Inativos
+        </option>
+
+      </select>
+
+    </div>
+
+
+    <div
+      id="workoutTable"
+      class="table-wrap"
+    >
+
+      <table class="table">
+
+        <thead>
+
+          <tr>
+
+            <th>Aluno</th>
+            <th>Objetivo</th>
+            <th>Ficha</th>
+            <th>Exercícios</th>
+            <th>Atualização</th>
+            <th>Status</th>
+            <th>Ações</th>
+
+          </tr>
+
+        </thead>
+
+
+        <tbody id="workoutTableBody">
+
+          <tr>
+
+            <td colspan="7">
+              Nenhuma ficha de treino cadastrada.
+            </td>
+
+          </tr>
+
+        </tbody>
+
+      </table>
+
+    </div>
 
   </div>
 

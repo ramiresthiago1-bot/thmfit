@@ -87,6 +87,9 @@ function goTo(page) {
 if (page === "financeiro") {
   loadFinance();
 }
+if (page === "treinos") {
+  loadWorkouts();
+}
 if (page === "acessos") {
   loadAccesses();
 }
@@ -4256,10 +4259,1201 @@ function initCommercialEvents() {
   }
 }  
 
-/* Inicialização */
+/* =========================================================
+   TREINOS - CONTROLE DE FICHAS
+   ========================================================= */
+
+let workoutCache = [];
+
+
+/* =========================================================
+   CARREGAR TREINOS
+   ========================================================= */
+
+async function loadWorkouts() {
+
+  if (demoMode) {
+
+    workoutCache = JSON.parse(
+      localStorage.getItem(
+        "thm_demo_treinos"
+      ) || "[]"
+    );
+
+    renderWorkouts();
+
+    return;
+  }
+
+
+  const {
+    data,
+    error
+  } = await client
+    .from("treinos")
+    .select(`
+      id,
+      aluno_id,
+      nome,
+      objetivo,
+      conteudo,
+      status,
+      gerado_por,
+      criado_em,
+      atualizado_em
+    `)
+    .order(
+      "atualizado_em",
+      {
+        ascending: false
+      }
+    );
+
+
+  if (error) {
+
+    console.error(
+      "Erro ao carregar treinos:",
+      error
+    );
+
+    return toast(
+      "Erro ao carregar treinos.",
+      true
+    );
+  }
+
+
+  workoutCache =
+    data || [];
+
+
+  renderWorkouts();
+}
+
+
+/* =========================================================
+   CARREGAR ALUNOS NO EDITOR
+   ========================================================= */
+
+function loadWorkoutStudents(
+  selectedId = ""
+) {
+
+  const select =
+    $("workoutStudent");
+
+  if (!select) return;
+
+
+  select.innerHTML = `
+    <option value="">
+      Selecione o aluno
+    </option>
+  `;
+
+
+  studentsCache
+    .filter(
+      student =>
+        student.status === "ativo"
+    )
+    .sort(
+      (a, b) =>
+        String(
+          a.nome || ""
+        ).localeCompare(
+          String(
+            b.nome || ""
+          ),
+          "pt-BR"
+        )
+    )
+    .forEach(student => {
+
+      const option =
+        document.createElement(
+          "option"
+        );
+
+
+      option.value =
+        student.id;
+
+
+      option.textContent =
+        `${student.matricula || "—"} — ${student.nome}`;
+
+
+      if (
+        String(student.id) ===
+        String(selectedId)
+      ) {
+
+        option.selected = true;
+
+      }
+
+
+      select.appendChild(
+        option
+      );
+
+    });
+}
+
+
+/* =========================================================
+   NOVA FICHA
+   ========================================================= */
+
+function openWorkoutModal() {
+
+  const editor =
+    $("workoutEditor");
+
+  const form =
+    $("workoutForm");
+
+
+  if (!editor || !form) {
+    return;
+  }
+
+
+  form.reset();
+
+
+  $("workoutId").value = "";
+
+
+  $("workoutEditorTitle").textContent =
+    "Nova ficha de treino";
+
+
+  $("workoutFormStatus").value =
+    "ativo";
+
+
+  loadWorkoutStudents();
+
+
+  $("exerciseList").innerHTML = "";
+
+
+  addExerciseRow();
+
+
+  editor.classList.remove(
+    "hidden"
+  );
+
+
+  editor.scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+}
+
+
+/* =========================================================
+   CANCELAR EDIÇÃO
+   ========================================================= */
+
+function closeWorkoutEditor() {
+
+  $("workoutEditor")
+    ?.classList.add(
+      "hidden"
+    );
+
+  $("workoutForm")
+    ?.reset();
+
+  $("exerciseList").innerHTML =
+    "";
+}
+
+
+/* =========================================================
+   ADICIONAR EXERCÍCIO
+   ========================================================= */
+
+function addExerciseRow(
+  exercise = {}
+) {
+
+  const list =
+    $("exerciseList");
+
+  if (!list) return;
+
+
+  const row =
+    document.createElement(
+      "div"
+    );
+
+
+  row.className =
+    "exercise-row";
+
+
+  row.innerHTML = `
+
+    <div class="form-grid">
+
+      <label>
+        Exercício
+
+        <input
+          type="text"
+          class="exercise-name"
+          placeholder="Ex.: Supino reto"
+          value="${esc(
+            exercise.nome || ""
+          )}"
+          required
+        >
+      </label>
+
+
+      <label>
+        Séries
+
+        <input
+          type="number"
+          class="exercise-series"
+          min="1"
+          value="${esc(
+            exercise.series || ""
+          )}"
+          placeholder="4"
+        >
+      </label>
+
+
+      <label>
+        Repetições
+
+        <input
+          type="text"
+          class="exercise-reps"
+          value="${esc(
+            exercise.repeticoes || ""
+          )}"
+          placeholder="8-12"
+        >
+      </label>
+
+
+      <label>
+        Carga
+
+        <input
+          type="text"
+          class="exercise-load"
+          value="${esc(
+            exercise.carga || ""
+          )}"
+          placeholder="Ex.: 30 kg"
+        >
+      </label>
+
+
+      <label>
+        Descanso
+
+        <input
+          type="text"
+          class="exercise-rest"
+          value="${esc(
+            exercise.descanso || ""
+          )}"
+          placeholder="60s"
+        >
+      </label>
+
+
+      <label>
+        Observações
+
+        <input
+          type="text"
+          class="exercise-notes"
+          value="${esc(
+            exercise.observacoes || ""
+          )}"
+          placeholder="Observações"
+        >
+      </label>
+
+    </div>
+
+
+    <button
+      type="button"
+      class="secondary remove-exercise"
+    >
+      Remover exercício
+    </button>
+
+  `;
+
+
+  list.appendChild(
+    row
+  );
+
+
+  row
+    .querySelector(
+      ".remove-exercise"
+    )
+    .addEventListener(
+      "click",
+      () => {
+
+        row.remove();
+
+      }
+    );
+}
+
+
+/* =========================================================
+   LER EXERCÍCIOS DO FORMULÁRIO
+   ========================================================= */
+
+function getWorkoutExercises() {
+
+  return [
+    ...document.querySelectorAll(
+      "#exerciseList .exercise-row"
+    )
+  ]
+    .map(row => ({
+
+      nome:
+        row
+          .querySelector(
+            ".exercise-name"
+          )
+          ?.value
+          .trim() || "",
+
+      series:
+        row
+          .querySelector(
+            ".exercise-series"
+          )
+          ?.value
+          .trim() || "",
+
+      repeticoes:
+        row
+          .querySelector(
+            ".exercise-reps"
+          )
+          ?.value
+          .trim() || "",
+
+      carga:
+        row
+          .querySelector(
+            ".exercise-load"
+          )
+          ?.value
+          .trim() || "",
+
+      descanso:
+        row
+          .querySelector(
+            ".exercise-rest"
+          )
+          ?.value
+          .trim() || "",
+
+      observacoes:
+        row
+          .querySelector(
+            ".exercise-notes"
+          )
+          ?.value
+          .trim() || ""
+
+    }))
+    .filter(
+      exercise =>
+        exercise.nome
+    );
+}
+
+
+/* =========================================================
+   SALVAR FICHA
+   ========================================================= */
+
+async function saveWorkout(
+  event
+) {
+
+  event.preventDefault();
+
+
+  const id =
+    $("workoutId")
+      ?.value
+      .trim();
+
+
+  const alunoId =
+    $("workoutStudent")
+      ?.value;
+
+
+  const nome =
+    $("workoutName")
+      ?.value
+      .trim();
+
+
+  const objetivo =
+    $("workoutGoal")
+      ?.value || null;
+
+
+  const status =
+    $("workoutFormStatus")
+      ?.value || "ativo";
+
+
+  const exercises =
+    getWorkoutExercises();
+
+
+  if (!alunoId) {
+
+    return toast(
+      "Selecione o aluno.",
+      true
+    );
+
+  }
+
+
+  if (!nome) {
+
+    return toast(
+      "Informe o nome da ficha.",
+      true
+    );
+
+  }
+
+
+  if (!exercises.length) {
+
+    return toast(
+      "Adicione pelo menos um exercício.",
+      true
+    );
+
+  }
+
+
+  const conteudo = {
+
+    exercicios:
+      exercises
+
+  };
+
+
+  /* =======================================================
+     MODO DEMONSTRAÇÃO
+     ======================================================= */
+
+  if (demoMode) {
+
+    const now =
+      new Date()
+        .toISOString();
+
+
+    if (id) {
+
+      workoutCache =
+        workoutCache.map(
+          workout =>
+            String(workout.id) ===
+            String(id)
+              ?
+              {
+                ...workout,
+                aluno_id:
+                  alunoId,
+                nome,
+                objetivo,
+                conteudo,
+                status,
+                gerado_por:
+                  "manual",
+                atualizado_em:
+                  now
+              }
+              :
+              workout
+        );
+
+    } else {
+
+      workoutCache = [
+
+        {
+          id:
+            crypto.randomUUID(),
+
+          aluno_id:
+            alunoId,
+
+          nome,
+
+          objetivo,
+
+          conteudo,
+
+          status,
+
+          gerado_por:
+            "manual",
+
+          criado_em:
+            now,
+
+          atualizado_em:
+            now
+
+        },
+
+        ...workoutCache
+
+      ];
+
+    }
+
+
+    localStorage.setItem(
+      "thm_demo_treinos",
+      JSON.stringify(
+        workoutCache
+      )
+    );
+
+
+    closeWorkoutEditor();
+
+    renderWorkouts();
+
+
+    return toast(
+      "Ficha salva com sucesso."
+    );
+  }
+
+
+  /* =======================================================
+     SUPABASE
+     ======================================================= */
+
+  const payload = {
+
+    aluno_id:
+      alunoId,
+
+    nome,
+
+    objetivo,
+
+    conteudo,
+
+    status,
+
+    gerado_por:
+      "manual",
+
+    atualizado_em:
+      new Date()
+        .toISOString()
+
+  };
+
+
+  let result;
+
+
+  if (id) {
+
+    result =
+      await client
+        .from("treinos")
+        .update(
+          payload
+        )
+        .eq(
+          "id",
+          id
+        )
+        .select()
+        .single();
+
+  } else {
+
+    result =
+      await client
+        .from("treinos")
+        .insert(
+          payload
+        )
+        .select()
+        .single();
+
+  }
+
+
+  if (result.error) {
+
+    console.error(
+      "Erro ao salvar treino:",
+      result.error
+    );
+
+    return toast(
+      result.error.message,
+      true
+    );
+  }
+
+
+  if (id) {
+
+    workoutCache =
+      workoutCache.map(
+        workout =>
+          String(workout.id) ===
+          String(id)
+            ?
+            result.data
+            :
+            workout
+      );
+
+  } else {
+
+    workoutCache = [
+
+      result.data,
+
+      ...workoutCache
+
+    ];
+
+  }
+
+
+  closeWorkoutEditor();
+
+  renderWorkouts();
+
+
+  toast(
+    "Ficha salva com sucesso."
+  );
+}
+
+
+/* =========================================================
+   EDITAR FICHA
+   ========================================================= */
+
+function editWorkout(
+  id
+) {
+
+  const workout =
+    workoutCache.find(
+      item =>
+        String(item.id) ===
+        String(id)
+    );
+
+
+  if (!workout) {
+
+    return toast(
+      "Ficha não encontrada.",
+      true
+    );
+
+  }
+
+
+  const editor =
+    $("workoutEditor");
+
+
+  if (!editor) return;
+
+
+  $("workoutId").value =
+    workout.id;
+
+
+  $("workoutEditorTitle").textContent =
+    "Editar ficha de treino";
+
+
+  loadWorkoutStudents(
+    workout.aluno_id
+  );
+
+
+  $("workoutName").value =
+    workout.nome || "";
+
+
+  $("workoutGoal").value =
+    workout.objetivo || "";
+
+
+  $("workoutFormStatus").value =
+    workout.status || "ativo";
+
+
+  $("exerciseList").innerHTML =
+    "";
+
+
+  let exercises = [];
+
+
+  if (
+    workout.conteudo &&
+    Array.isArray(
+      workout.conteudo.exercicios
+    )
+  ) {
+
+    exercises =
+      workout.conteudo.exercicios;
+
+  }
+
+
+  if (exercises.length) {
+
+    exercises.forEach(
+      exercise =>
+        addExerciseRow(
+          exercise
+        )
+    );
+
+  } else {
+
+    addExerciseRow();
+
+  }
+
+
+  editor.classList.remove(
+    "hidden"
+  );
+
+
+  editor.scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+}
+
+
+/* =========================================================
+   RENDERIZAR FICHAS
+   ========================================================= */
+
+function renderWorkouts() {
+
+  const tbody =
+    $("workoutTableBody");
+
+
+  if (!tbody) return;
+
+
+  const search =
+    (
+      $("workoutSearch")
+        ?.value || ""
+    )
+      .trim()
+      .toLowerCase();
+
+
+  const statusFilter =
+    $("workoutStatus")
+      ?.value || "";
+
+
+  const studentsById =
+    {};
+
+
+  studentsCache.forEach(
+    student => {
+
+      studentsById[
+        String(student.id)
+      ] =
+        student;
+
+    }
+  );
+
+
+  const rows =
+    workoutCache.filter(
+      workout => {
+
+        const student =
+          studentsById[
+            String(
+              workout.aluno_id
+            )
+          ];
+
+
+        const studentName =
+          student?.nome || "";
+
+
+        const matchesSearch =
+          !search ||
+          studentName
+            .toLowerCase()
+            .includes(
+              search
+            );
+
+
+        const matchesStatus =
+          !statusFilter ||
+          String(
+            workout.status || ""
+          ).toLowerCase() ===
+            statusFilter.toLowerCase();
+
+
+        return (
+          matchesSearch &&
+          matchesStatus
+        );
+
+      }
+    );
+
+
+  if (!rows.length) {
+
+    tbody.innerHTML = `
+
+      <tr>
+
+        <td colspan="7">
+          Nenhuma ficha de treino cadastrada.
+        </td>
+
+      </tr>
+
+    `;
+
+    updateWorkoutStats();
+
+    return;
+  }
+
+
+  tbody.innerHTML =
+    rows
+      .map(
+        workout => {
+
+          const student =
+            studentsById[
+              String(
+                workout.aluno_id
+              )
+            ];
+
+
+          const studentName =
+            student?.nome ||
+            "Aluno não encontrado";
+
+
+          const exercises =
+            Array.isArray(
+              workout
+                .conteudo
+                ?.exercicios
+            )
+              ?
+              workout
+                .conteudo
+                .exercicios
+                .length
+              :
+              0;
+
+
+          const updated =
+            workout.atualizado_em
+              ?
+              new Date(
+                workout.atualizado_em
+              ).toLocaleDateString(
+                "pt-BR"
+              )
+              :
+              "—";
+
+
+          return `
+
+            <tr>
+
+              <td>
+                <strong>
+                  ${esc(
+                    studentName
+                  )}
+                </strong>
+              </td>
+
+
+              <td>
+                ${esc(
+                  workout.objetivo ||
+                  student?.objetivo ||
+                  "—"
+                )}
+              </td>
+
+
+              <td>
+                ${esc(
+                  workout.nome ||
+                  "Ficha de treino"
+                )}
+              </td>
+
+
+              <td>
+                ${exercises}
+              </td>
+
+
+              <td>
+                ${updated}
+              </td>
+
+
+              <td>
+
+                <span
+                  class="status ${
+                    String(
+                      workout.status ||
+                      ""
+                    ).toLowerCase()
+                  }"
+                >
+                  ${esc(
+                    workout.status ||
+                    "—"
+                  )}
+                </span>
+
+              </td>
+
+
+              <td>
+
+                <button
+                  type="button"
+                  class="secondary"
+                  onclick="editWorkout('${workout.id}')"
+                >
+                  Editar
+                </button>
+
+              </td>
+
+            </tr>
+
+          `;
+
+        }
+      )
+      .join("");
+
+
+  updateWorkoutStats();
+}
+
+
+/* =========================================================
+   INDICADORES
+   ========================================================= */
+
+function updateWorkoutStats() {
+
+  const total =
+    $("workoutStatTotal");
+
+
+  const students =
+    $("workoutStatStudents");
+
+
+  const exercises =
+    $("workoutStatExercises");
+
+
+  if (total) {
+
+    total.textContent =
+      workoutCache.length;
+
+  }
+
+
+  if (students) {
+
+    const uniqueStudents =
+      new Set(
+        workoutCache.map(
+          workout =>
+            workout.aluno_id
+        )
+      );
+
+
+    students.textContent =
+      uniqueStudents.size;
+
+  }
+
+
+  if (exercises) {
+
+    const totalExercises =
+      workoutCache.reduce(
+        (
+          total,
+          workout
+        ) => {
+
+          const list =
+            workout
+              .conteudo
+              ?.exercicios;
+
+
+          return (
+            total +
+            (
+              Array.isArray(list)
+                ?
+                list.length
+                :
+                0
+            )
+          );
+
+        },
+        0
+      );
+
+
+    exercises.textContent =
+      totalExercises;
+
+  }
+}
+
+
+/* =========================================================
+   EVENTOS
+   ========================================================= */
+
+function initWorkoutEvents() {
+
+  $("workoutSearch")
+    ?.addEventListener(
+      "input",
+      renderWorkouts
+    );
+
+
+  $("workoutStatus")
+    ?.addEventListener(
+      "change",
+      renderWorkouts
+    );
+
+
+  $("newWorkoutBtn")
+    ?.addEventListener(
+      "click",
+      openWorkoutModal
+    );
+
+
+  $("cancelWorkoutBtn")
+    ?.addEventListener(
+      "click",
+      closeWorkoutEditor
+    );
+
+
+  $("addExerciseBtn")
+    ?.addEventListener(
+      "click",
+      () =>
+        addExerciseRow()
+    );
+
+
+  $("workoutForm")
+    ?.addEventListener(
+      "submit",
+      saveWorkout
+    );
+}
+
+
+/* =========================================================
+   INICIALIZAÇÃO
+   ========================================================= */
+
 initCommercialEvents();
+
 loadLeads();
+
 initFinanceEvents();
+
+initWorkoutEvents();
 
 // =========================================================
 // DASHBOARD FINANCEIRO - GRÁFICOS
