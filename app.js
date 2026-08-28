@@ -5566,6 +5566,150 @@ const exerciseRows =
   });
 }
 
+/* =========================================================
+   DUPLICAR FICHA
+   ========================================================= */
+
+async function duplicateWorkout(id) {
+
+  const workout =
+    workoutCache.find(
+      item =>
+        String(item.id) ===
+        String(id)
+    );
+
+
+  if (!workout) {
+
+    return toast(
+      "Ficha não encontrada.",
+      true
+    );
+
+  }
+
+
+  const student =
+    studentsCache.find(
+      item =>
+        String(item.id) ===
+        String(workout.aluno_id)
+    );
+
+
+  const originalName =
+    workout.nome ||
+    "Ficha de treino";
+
+
+  const newName =
+    prompt(
+      "Nome da nova ficha:",
+      `${originalName} - Cópia`
+    );
+
+
+  if (
+    newName === null
+  ) {
+    return;
+  }
+
+
+  const finalName =
+    newName.trim();
+
+
+  if (!finalName) {
+
+    return toast(
+      "Informe o nome da nova ficha.",
+      true
+    );
+
+  }
+
+  try {
+
+    const payload = {
+
+      aluno_id:
+        workout.aluno_id,
+
+      nome:
+        finalName,
+
+      objetivo:
+        workout.objetivo ||
+        student?.objetivo ||
+        null,
+
+      conteudo:
+        workout.conteudo || {
+          exercicios: []
+        },
+
+      status:
+        workout.status ||
+        "ativo",
+
+      gerado_por:
+        workout.gerado_por ||
+        "manual"
+
+    };
+
+
+    const {
+      error
+    } =
+      await client
+        .from("treinos")
+        .insert(
+          payload
+        );
+
+
+    if (error) {
+
+      console.error(
+        "Erro ao duplicar ficha:",
+        error
+      );
+
+      return toast(
+        error.message ||
+        "Não foi possível duplicar a ficha.",
+        true
+      );
+
+    }
+
+
+    toast(
+      "Ficha duplicada com sucesso."
+    );
+
+
+    await loadWorkouts();
+
+
+  } catch (error) {
+
+    console.error(
+      "Erro ao duplicar ficha:",
+      error
+    );
+
+    toast(
+      "Erro ao duplicar ficha.",
+      true
+    );
+
+  }
+
+}
 
 /* =========================================================
    FECHAR VISUALIZAÇÃO
@@ -5595,7 +5739,6 @@ function renderWorkouts() {
 
   const tbody =
     $("workoutTableBody");
-
 
   if (!tbody) return;
 
@@ -5679,7 +5822,9 @@ function renderWorkouts() {
       <tr>
 
         <td colspan="7">
+
           Nenhuma ficha de treino cadastrada.
+
         </td>
 
       </tr>
@@ -5689,6 +5834,7 @@ function renderWorkouts() {
     updateWorkoutStats();
 
     return;
+
   }
 
 
@@ -5742,38 +5888,50 @@ function renderWorkouts() {
             <tr>
 
               <td>
+
                 <strong>
+
                   ${esc(
                     studentName
                   )}
+
                 </strong>
+
               </td>
 
 
               <td>
+
                 ${esc(
                   workout.objetivo ||
                   student?.objetivo ||
                   "—"
                 )}
+
               </td>
 
 
               <td>
+
                 ${esc(
                   workout.nome ||
                   "Ficha de treino"
                 )}
+
               </td>
 
 
               <td>
+
                 ${exercises}
+
               </td>
 
 
               <td>
+
                 ${updated}
+
               </td>
 
 
@@ -5787,10 +5945,12 @@ function renderWorkouts() {
                     ).toLowerCase()
                   }"
                 >
+
                   ${esc(
                     workout.status ||
                     "—"
                   )}
+
                 </span>
 
               </td>
@@ -5798,37 +5958,41 @@ function renderWorkouts() {
 
               <td>
 
-<div style="display:flex; gap:6px; flex-wrap:wrap;">
+                <div
+                  style="
+                    display:flex;
+                    gap:6px;
+                    flex-wrap:wrap;
+                  "
+                >
 
-  <button
-    type="button"
-    class="secondary"
-    onclick="viewWorkout('${workout.id}')"
-  >
-    Ver ficha
-  </button>
+                  <button
+                    type="button"
+                    class="secondary"
+                    onclick="viewWorkout('${workout.id}')"
+                  >
+                    Ver ficha
+                  </button>
 
-<div style="display:flex; gap:6px; flex-wrap:wrap;">
 
-  <button
-    type="button"
-    class="secondary"
-    onclick="viewWorkout('${workout.id}')"
-  >
-    Ver ficha
-  </button>
+                  <button
+                    type="button"
+                    class="secondary"
+                    onclick="editWorkout('${workout.id}')"
+                  >
+                    Editar
+                  </button>
 
-  <button
-    type="button"
-    class="secondary"
-    onclick="editWorkout('${workout.id}')"
-  >
-    Editar
-  </button>
 
-</div>
+                  <button
+                    type="button"
+                    class="secondary"
+                    onclick="duplicateWorkout('${workout.id}')"
+                  >
+                    Duplicar
+                  </button>
 
-</div> 
+                </div>
 
               </td>
 
@@ -5842,8 +6006,8 @@ function renderWorkouts() {
 
 
   updateWorkoutStats();
-}
 
+}   
 
 /* =========================================================
    INDICADORES
