@@ -4503,6 +4503,36 @@ function addExerciseRow(
 
     <div class="form-grid">
 
+    <label>
+
+  Divisão
+
+  <select class="exercise-division">
+
+    <option value="A">
+      Treino A
+    </option>
+
+    <option value="B">
+      Treino B
+    </option>
+
+    <option value="C">
+      Treino C
+    </option>
+
+    <option value="D">
+      Treino D
+    </option>
+
+    <option value="E">
+      Treino E
+    </option>
+
+  </select>
+
+</label>
+
       <label>
 
         Grupo muscular
@@ -4676,6 +4706,24 @@ function addExerciseRow(
     row
   );
 
+/* Restaurar divisão
+   quando estiver editando */
+
+if (exercise.divisao) {
+
+  const division =
+    row.querySelector(
+      ".exercise-division"
+    );
+
+  if (division) {
+
+    division.value =
+      exercise.divisao;
+
+  }
+
+}  
 
   /* Restaurar grupo muscular
      quando estiver editando */
@@ -4731,6 +4779,14 @@ grupo:
     )
     ?.value
     .trim() || "",      
+
+divisao:
+  row
+    .querySelector(
+      ".exercise-division"
+    )
+    ?.value
+    .trim() || "A",
 
       nome:
         row
@@ -5227,154 +5283,206 @@ function viewWorkout(id) {
     return;
   }
 
+const divisions = [
+  "A",
+  "B",
+  "C",
+  "D",
+  "E"
+];
 
-  const exerciseRows =
-    exercises.length
-      ?
 
-        exercises
-          .map(
-            (exercise, index) => `
+const exerciseRows =
+  exercises.length
+    ?
+
+      divisions
+        .map(
+          division => {
+
+            const divisionExercises =
+              exercises.filter(
+                exercise =>
+                  (
+                    exercise.divisao ||
+                    "A"
+                  ) === division
+              );
+
+
+            if (
+              !divisionExercises.length
+            ) {
+              return "";
+            }
+
+
+            return `
 
               <div
                 style="
-                  border:1px solid #e5e7eb;
-                  border-radius:10px;
-                  padding:15px;
-                  margin-bottom:10px;
+                  margin-top:20px;
+                  margin-bottom:12px;
+                  padding:10px 14px;
+                  border-radius:8px;
+                  font-weight:600;
+                  font-size:16px;
                 "
               >
-
-<div
-  style="
-    font-size:16px;
-    font-weight:600;
-    margin-bottom:5px;
-  "
->
-  ${index + 1}.
-  ${esc(
-    exercise.nome ||
-    "Exercício"
-  )}
-</div>
-
-<div
-  style="
-    font-size:13px;
-    margin-bottom:12px;
-  "
->
-  Grupo muscular:
-  <strong>
-    ${esc(
-      exercise.grupo ||
-      "Não informado"
-    )}
-  </strong>
-</div>
-
-                <div
-                  style="
-                    display:grid;
-                    grid-template-columns:
-                      repeat(
-                        4,
-                        minmax(0,1fr)
-                      );
-                    gap:12px;
-                  "
-                >
-
-                  <div>
-                    <small>Séries</small>
-                    <strong>
-                      ${esc(
-                        exercise.series ||
-                        "—"
-                      )}
-                    </strong>
-                  </div>
+                Treino ${division}
+              </div>
 
 
-                  <div>
-                    <small>Repetições</small>
-                    <strong>
-                      ${esc(
-                        exercise.repeticoes ||
-                        "—"
-                      )}
-                    </strong>
-                  </div>
+              ${divisionExercises
+                .map(
+                  (exercise, index) => `
 
+                    <div
+                      style="
+                        border:1px solid #e5e7eb;
+                        border-radius:10px;
+                        padding:15px;
+                        margin-bottom:10px;
+                      "
+                    >
 
-                  <div>
-                    <small>Carga</small>
-                    <strong>
-                      ${esc(
-                        exercise.carga ||
-                        "—"
-                      )}
-                    </strong>
-                  </div>
-
-
-                  <div>
-                    <small>Descanso</small>
-                    <strong>
-                      ${esc(
-                        exercise.descanso ||
-                        "—"
-                      )}
-                    </strong>
-                  </div>
-
-                </div>
-
-
-                ${
-                  exercise.observacoes
-                    ?
-
-                    `
                       <div
                         style="
-                          margin-top:12px;
+                          font-size:16px;
+                          font-weight:600;
+                          margin-bottom:5px;
+                        "
+                      >
+                        ${index + 1}.
+                        ${esc(
+                          exercise.nome ||
+                          "Exercício"
+                        )}
+                      </div>
+
+
+                      <div
+                        style="
+                          font-size:13px;
+                          margin-bottom:12px;
+                        "
+                      >
+                        Grupo muscular:
+                        <strong>
+                          ${esc(
+                            exercise.grupo ||
+                            "Não informado"
+                          )}
+                        </strong>
+                      </div>
+
+
+                      <div
+                        style="
+                          display:grid;
+                          grid-template-columns:
+                            repeat(
+                              4,
+                              minmax(0,1fr)
+                            );
+                          gap:12px;
                         "
                       >
 
-                        <small>
-                          Observações
-                        </small>
+                        <div>
+                          <small>Séries</small>
+                          <strong>
+                            ${esc(
+                              exercise.series ||
+                              "—"
+                            )}
+                          </strong>
+                        </div>
+
 
                         <div>
-                          ${esc(
-                            exercise.observacoes
-                          )}
+                          <small>Repetições</small>
+                          <strong>
+                            ${esc(
+                              exercise.repeticoes ||
+                              "—"
+                            )}
+                          </strong>
+                        </div>
+
+
+                        <div>
+                          <small>Carga</small>
+                          <strong>
+                            ${esc(
+                              exercise.carga ||
+                              "—"
+                            )}
+                          </strong>
+                        </div>
+
+
+                        <div>
+                          <small>Descanso</small>
+                          <strong>
+                            ${esc(
+                              exercise.descanso ||
+                              "—"
+                            )}
+                          </strong>
                         </div>
 
                       </div>
-                    `
 
-                    :
 
-                    ""
-                }
+                      ${
+                        exercise.observacoes
+                          ?
 
-              </div>
+                          `
+                            <div
+                              style="
+                                margin-top:12px;
+                              "
+                            >
 
-            `
-          )
-          .join("")
+                              <small>
+                                Observações
+                              </small>
 
-      :
+                              <div>
+                                ${esc(
+                                  exercise.observacoes
+                                )}
+                              </div>
 
-        `
-          <div>
-            Nenhum exercício cadastrado.
-          </div>
-        `;
+                            </div>
+                          `
 
+                          :
+
+                          ""
+                      }
+
+                    </div>
+
+                  `
+                )
+                .join("")}
+
+            `;
+
+          }
+        )
+        .join("")
+
+    :
+
+      `
+        <div>
+          Nenhum exercício cadastrado.
+        </div>
+      `;
 
   content.innerHTML = `
 
