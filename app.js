@@ -4504,6 +4504,66 @@ function addExerciseRow(
     <div class="form-grid">
 
       <label>
+
+        Grupo muscular
+
+        <select class="exercise-group">
+
+          <option value="">
+            Selecione
+          </option>
+
+          <option value="Peito">
+            Peito
+          </option>
+
+          <option value="Costas">
+            Costas
+          </option>
+
+          <option value="Ombros">
+            Ombros
+          </option>
+
+          <option value="Bíceps">
+            Bíceps
+          </option>
+
+          <option value="Tríceps">
+            Tríceps
+          </option>
+
+          <option value="Pernas">
+            Pernas
+          </option>
+
+          <option value="Glúteos">
+            Glúteos
+          </option>
+
+          <option value="Abdômen">
+            Abdômen
+          </option>
+
+          <option value="Panturrilhas">
+            Panturrilhas
+          </option>
+
+          <option value="Cardio">
+            Cardio
+          </option>
+
+          <option value="Outro">
+            Outro
+          </option>
+
+        </select>
+
+      </label>
+
+
+      <label>
+
         Exercício
 
         <input
@@ -4515,10 +4575,12 @@ function addExerciseRow(
           )}"
           required
         >
+
       </label>
 
 
       <label>
+
         Séries
 
         <input
@@ -4530,10 +4592,12 @@ function addExerciseRow(
           )}"
           placeholder="4"
         >
+
       </label>
 
 
       <label>
+
         Repetições
 
         <input
@@ -4544,10 +4608,12 @@ function addExerciseRow(
           )}"
           placeholder="8-12"
         >
+
       </label>
 
 
       <label>
+
         Carga
 
         <input
@@ -4558,10 +4624,12 @@ function addExerciseRow(
           )}"
           placeholder="Ex.: 30 kg"
         >
+
       </label>
 
 
       <label>
+
         Descanso
 
         <input
@@ -4572,10 +4640,12 @@ function addExerciseRow(
           )}"
           placeholder="60s"
         >
+
       </label>
 
 
       <label>
+
         Observações
 
         <input
@@ -4586,6 +4656,7 @@ function addExerciseRow(
           )}"
           placeholder="Observações"
         >
+
       </label>
 
     </div>
@@ -4604,6 +4675,26 @@ function addExerciseRow(
   list.appendChild(
     row
   );
+
+
+  /* Restaurar grupo muscular
+     quando estiver editando */
+
+  if (exercise.grupo) {
+
+    const group =
+      row.querySelector(
+        ".exercise-group"
+      );
+
+    if (group) {
+
+      group.value =
+        exercise.grupo;
+
+    }
+
+  }
 
 
   row
@@ -4633,6 +4724,13 @@ function getWorkoutExercises() {
     )
   ]
     .map(row => ({
+grupo:
+  row
+    .querySelector(
+      ".exercise-group"
+    )
+    ?.value
+    .trim() || "",      
 
       nome:
         row
@@ -5077,6 +5175,309 @@ function editWorkout(
   });
 }
 
+/* =========================================================
+   VISUALIZAR FICHA
+   ========================================================= */
+
+function viewWorkout(id) {
+
+  const workout =
+    workoutCache.find(
+      item =>
+        String(item.id) ===
+        String(id)
+    );
+
+
+  if (!workout) {
+
+    return toast(
+      "Ficha não encontrada.",
+      true
+    );
+
+  }
+
+
+  const student =
+    studentsCache.find(
+      item =>
+        String(item.id) ===
+        String(workout.aluno_id)
+    );
+
+
+  const exercises =
+    Array.isArray(
+      workout.conteudo?.exercicios
+    )
+      ? workout.conteudo.exercicios
+      : [];
+
+
+  const viewer =
+    $("workoutViewer");
+
+
+  const content =
+    $("workoutViewerContent");
+
+
+  if (!viewer || !content) {
+    return;
+  }
+
+
+  const exerciseRows =
+    exercises.length
+      ?
+
+        exercises
+          .map(
+            (exercise, index) => `
+
+              <div
+                style="
+                  border:1px solid #e5e7eb;
+                  border-radius:10px;
+                  padding:15px;
+                  margin-bottom:10px;
+                "
+              >
+
+<div
+  style="
+    font-size:16px;
+    font-weight:600;
+    margin-bottom:5px;
+  "
+>
+  ${index + 1}.
+  ${esc(
+    exercise.nome ||
+    "Exercício"
+  )}
+</div>
+
+<div
+  style="
+    font-size:13px;
+    margin-bottom:12px;
+  "
+>
+  Grupo muscular:
+  <strong>
+    ${esc(
+      exercise.grupo ||
+      "Não informado"
+    )}
+  </strong>
+</div>
+
+                <div
+                  style="
+                    display:grid;
+                    grid-template-columns:
+                      repeat(
+                        4,
+                        minmax(0,1fr)
+                      );
+                    gap:12px;
+                  "
+                >
+
+                  <div>
+                    <small>Séries</small>
+                    <strong>
+                      ${esc(
+                        exercise.series ||
+                        "—"
+                      )}
+                    </strong>
+                  </div>
+
+
+                  <div>
+                    <small>Repetições</small>
+                    <strong>
+                      ${esc(
+                        exercise.repeticoes ||
+                        "—"
+                      )}
+                    </strong>
+                  </div>
+
+
+                  <div>
+                    <small>Carga</small>
+                    <strong>
+                      ${esc(
+                        exercise.carga ||
+                        "—"
+                      )}
+                    </strong>
+                  </div>
+
+
+                  <div>
+                    <small>Descanso</small>
+                    <strong>
+                      ${esc(
+                        exercise.descanso ||
+                        "—"
+                      )}
+                    </strong>
+                  </div>
+
+                </div>
+
+
+                ${
+                  exercise.observacoes
+                    ?
+
+                    `
+                      <div
+                        style="
+                          margin-top:12px;
+                        "
+                      >
+
+                        <small>
+                          Observações
+                        </small>
+
+                        <div>
+                          ${esc(
+                            exercise.observacoes
+                          )}
+                        </div>
+
+                      </div>
+                    `
+
+                    :
+
+                    ""
+                }
+
+              </div>
+
+            `
+          )
+          .join("")
+
+      :
+
+        `
+          <div>
+            Nenhum exercício cadastrado.
+          </div>
+        `;
+
+
+  content.innerHTML = `
+
+    <div
+      style="
+        display:grid;
+        grid-template-columns:
+          repeat(
+            3,
+            minmax(0,1fr)
+          );
+        gap:16px;
+        margin-bottom:20px;
+      "
+    >
+
+      <div>
+
+        <small>Aluno</small>
+
+        <strong>
+          ${esc(
+            student?.nome ||
+            "Aluno não encontrado"
+          )}
+        </strong>
+
+      </div>
+
+
+      <div>
+
+        <small>Ficha</small>
+
+        <strong>
+          ${esc(
+            workout.nome ||
+            "Ficha de treino"
+          )}
+        </strong>
+
+      </div>
+
+
+      <div>
+
+        <small>Objetivo</small>
+
+        <strong>
+          ${esc(
+            workout.objetivo ||
+            "—"
+          )}
+        </strong>
+
+      </div>
+
+    </div>
+
+
+    <div class="section-title">
+      Exercícios
+    </div>
+
+
+    <div>
+      ${exerciseRows}
+    </div>
+
+  `;
+
+
+  viewer.classList.remove(
+    "hidden"
+  );
+
+
+  viewer.scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+}
+
+
+/* =========================================================
+   FECHAR VISUALIZAÇÃO
+   ========================================================= */
+
+function closeWorkoutViewer() {
+
+  $("workoutViewer")
+    ?.classList.add(
+      "hidden"
+    );
+
+}
+
+
+$("closeWorkoutViewerBtn")
+  ?.addEventListener(
+    "click",
+    closeWorkoutViewer
+  );
 
 /* =========================================================
    RENDERIZAR FICHAS
@@ -5289,13 +5690,37 @@ function renderWorkouts() {
 
               <td>
 
-                <button
-                  type="button"
-                  class="secondary"
-                  onclick="editWorkout('${workout.id}')"
-                >
-                  Editar
-                </button>
+<div style="display:flex; gap:6px; flex-wrap:wrap;">
+
+  <button
+    type="button"
+    class="secondary"
+    onclick="viewWorkout('${workout.id}')"
+  >
+    Ver ficha
+  </button>
+
+<div style="display:flex; gap:6px; flex-wrap:wrap;">
+
+  <button
+    type="button"
+    class="secondary"
+    onclick="viewWorkout('${workout.id}')"
+  >
+    Ver ficha
+  </button>
+
+  <button
+    type="button"
+    class="secondary"
+    onclick="editWorkout('${workout.id}')"
+  >
+    Editar
+  </button>
+
+</div>
+
+</div> 
 
               </td>
 
