@@ -1620,24 +1620,504 @@
 
 </section>
 
-
 <!-- AVALIAÇÕES -->
 
 <section id="avaliacoesPage" class="page hidden">
 
-  <div class="placeholder">
+  <div class="page-header">
 
-    <h2>Avaliações</h2>
+    <div>
 
-    <p>
-      Módulo preparado para Tanita BC-601,
-      histórico e evolução.
-    </p>
+      <h2>Avaliações físicas</h2>
+
+      <p>
+        Acompanhe a evolução corporal dos alunos.
+      </p>
+
+    </div>
+
+    <button
+      id="newEvaluationBtn"
+      class="primary"
+      type="button"
+    >
+      + Nova avaliação
+    </button>
+
+  </div>
+
+
+  <!-- INDICADORES -->
+
+  <div class="stats-grid">
+
+    <div class="stat-card">
+
+      <span class="stat-label">
+        Avaliações realizadas
+      </span>
+
+      <strong
+        id="evaluationStatTotal"
+        class="stat-value"
+      >
+        0
+      </strong>
+
+    </div>
+
+
+    <div class="stat-card">
+
+      <span class="stat-label">
+        Alunos avaliados
+      </span>
+
+      <strong
+        id="evaluationStatStudents"
+        class="stat-value"
+      >
+        0
+      </strong>
+
+    </div>
+
+
+    <div class="stat-card">
+
+      <span class="stat-label">
+        Última avaliação
+      </span>
+
+      <strong
+        id="evaluationStatLast"
+        class="stat-value"
+      >
+        —
+      </strong>
+
+    </div>
+
+  </div>
+
+
+  <!-- EDITOR -->
+
+  <div
+    id="evaluationEditor"
+    class="panel hidden"
+  >
+
+    <div class="panel-title">
+
+      <span id="evaluationEditorTitle">
+        Nova avaliação
+      </span>
+
+    </div>
+
+
+    <form
+      id="evaluationForm"
+      class="form-grid"
+    >
+
+      <input
+        id="evaluationId"
+        type="hidden"
+      >
+
+
+      <label class="span-2">
+
+        Aluno
+
+        <select
+          id="evaluationStudent"
+          required
+        >
+
+          <option value="">
+            Selecione o aluno
+          </option>
+
+        </select>
+
+      </label>
+
+
+      <label>
+
+        Data da avaliação
+
+        <input
+          id="evaluationDate"
+          type="date"
+          required
+        >
+
+      </label>
+
+
+      <label>
+
+        Peso (kg)
+
+        <input
+          id="evaluationWeight"
+          type="number"
+          step="0.1"
+          min="0"
+          placeholder="Ex.: 82.5"
+        >
+
+      </label>
+
+
+      <label>
+
+        Altura (cm)
+
+        <input
+          id="evaluationHeight"
+          type="number"
+          step="0.1"
+          min="0"
+          placeholder="Ex.: 175"
+        >
+
+      </label>
+
+
+      <label>
+
+        IMC
+
+        <input
+          id="evaluationBmi"
+          type="number"
+          step="0.1"
+          readonly
+          placeholder="Calculado automaticamente"
+        >
+
+      </label>
+
+
+      <div class="section-title span-2">
+        Composição corporal
+      </div>
+
+
+      <label>
+
+        Gordura corporal (%)
+
+        <input
+          id="evaluationBodyFat"
+          type="number"
+          step="0.1"
+          min="0"
+          placeholder="Ex.: 18.5"
+        >
+
+      </label>
+
+
+      <label>
+
+        Massa muscular (kg)
+
+        <input
+          id="evaluationMuscleMass"
+          type="number"
+          step="0.1"
+          min="0"
+          placeholder="Ex.: 38.2"
+        >
+
+      </label>
+
+
+      <label>
+
+        Água corporal (%)
+
+        <input
+          id="evaluationWater"
+          type="number"
+          step="0.1"
+          min="0"
+          placeholder="Ex.: 58.0"
+        >
+
+      </label>
+
+
+      <label>
+
+        Gordura visceral
+
+        <input
+          id="evaluationVisceralFat"
+          type="number"
+          step="0.1"
+          min="0"
+          placeholder="Ex.: 8"
+        >
+
+      </label>
+
+<div class="section-title span-2">
+  Medidas corporais
+</div>
+
+<label>
+  Pescoço (cm)
+  <input
+    id="evaluationNeck"
+    type="number"
+    step="0.1"
+    min="0"
+  >
+</label>
+
+<label>
+  Ombros (cm)
+  <input
+    id="evaluationShoulders"
+    type="number"
+    step="0.1"
+    min="0"
+  >
+</label>
+
+<label>
+  Peitoral (cm)
+  <input
+    id="evaluationChest"
+    type="number"
+    step="0.1"
+    min="0"
+  >
+</label>
+
+<label>
+  Cintura (cm)
+  <input
+    id="evaluationWaist"
+    type="number"
+    step="0.1"
+    min="0"
+  >
+</label>
+
+<label>
+  Abdômen (cm)
+  <input
+    id="evaluationAbdomen"
+    type="number"
+    step="0.1"
+    min="0"
+  >
+</label>
+
+<label>
+  Quadril (cm)
+  <input
+    id="evaluationHip"
+    type="number"
+    step="0.1"
+    min="0"
+  >
+</label>
+
+<label>
+  Braço direito (cm)
+  <input
+    id="evaluationRightArm"
+    type="number"
+    step="0.1"
+    min="0"
+  >
+</label>
+
+<label>
+  Braço esquerdo (cm)
+  <input
+    id="evaluationLeftArm"
+    type="number"
+    step="0.1"
+    min="0"
+  >
+</label>
+
+<label>
+  Antebraço direito (cm)
+  <input
+    id="evaluationRightForearm"
+    type="number"
+    step="0.1"
+    min="0"
+  >
+</label>
+
+<label>
+  Antebraço esquerdo (cm)
+  <input
+    id="evaluationLeftForearm"
+    type="number"
+    step="0.1"
+    min="0"
+  >
+</label>
+
+<label>
+  Coxa direita (cm)
+  <input
+    id="evaluationRightThigh"
+    type="number"
+    step="0.1"
+    min="0"
+  >
+</label>
+
+<label>
+  Coxa esquerda (cm)
+  <input
+    id="evaluationLeftThigh"
+    type="number"
+    step="0.1"
+    min="0"
+  >
+</label>
+
+<label>
+  Panturrilha direita (cm)
+  <input
+    id="evaluationRightCalf"
+    type="number"
+    step="0.1"
+    min="0"
+  >
+</label>
+
+<label>
+  Panturrilha esquerda (cm)
+  <input
+    id="evaluationLeftCalf"
+    type="number"
+    step="0.1"
+    min="0"
+  >
+</label>
+
+      <label class="span-2">
+
+        Observações
+
+        <textarea
+          id="evaluationNotes"
+          rows="4"
+          placeholder="Observações da avaliação..."
+        ></textarea>
+
+      </label>
+
+
+      <div class="form-actions span-2">
+
+        <button
+          id="cancelEvaluationBtn"
+          class="secondary"
+          type="button"
+        >
+          Cancelar
+        </button>
+
+
+        <button
+          class="primary"
+          type="submit"
+        >
+          Salvar avaliação
+        </button>
+
+      </div>
+
+    </form>
+
+  </div>
+
+
+  <!-- HISTÓRICO -->
+
+  <div class="panel">
+
+    <div class="panel-title">
+      Histórico de avaliações
+    </div>
+
+
+    <div class="toolbar">
+
+      <input
+        id="evaluationSearch"
+        type="search"
+        placeholder="🔎 Buscar aluno"
+      >
+
+    </div>
+
+
+    <div class="table-wrap">
+
+      <table class="table">
+
+        <thead>
+
+          <tr>
+
+            <th>Aluno</th>
+
+            <th>Data</th>
+
+            <th>Peso</th>
+
+            <th>Gordura</th>
+
+            <th>Massa muscular</th>
+
+            <th>IMC</th>
+
+            <th>Ações</th>
+
+          </tr>
+
+        </thead>
+
+
+        <tbody id="evaluationTableBody">
+
+          <tr>
+
+            <td colspan="7">
+
+              Nenhuma avaliação cadastrada.
+
+            </td>
+
+          </tr>
+
+        </tbody>
+
+      </table>
+
+    </div>
 
   </div>
 
 </section>
-
 
 <!-- RELATÓRIOS -->
 

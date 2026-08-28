@@ -7033,3 +7033,1170 @@ function renderFinanceCharts() {
 /* =========================================================
    TESTE TEMPORÁRIO - CONSULTA POR MATRÍCULA
    ========================================================= */
+   // =========================================================
+// AVALIAÇÕES - FUNCIONALIDADE
+// =========================================================
+
+(() => {
+
+  const evaluationForm = $("evaluationForm");
+  const newEvaluationBtn = $("newEvaluationBtn");
+  const cancelEvaluationBtn = $("cancelEvaluationBtn");
+
+  if (!evaluationForm) {
+    console.warn("Formulário de avaliação não encontrado.");
+    return;
+  }
+
+  // ---------------------------------------------------------
+  // LOCALIZAR MODAL DA AVALIAÇÃO
+  // ---------------------------------------------------------
+
+  const getEvaluationModal = () => {
+    return (
+      evaluationForm.closest(".modal") ||
+      evaluationForm.closest("[role='dialog']") ||
+      evaluationForm.parentElement
+    );
+  };
+
+  const openEvaluationEditor = () => {
+    populateEvaluationStudents();
+    const modal = getEvaluationModal();
+
+    if (modal) {
+      modal.classList.remove("hidden");
+    }
+
+    evaluationForm.reset();
+
+    const idField = $("evaluationId");
+
+    if (idField) {
+      idField.value = "";
+    }
+
+    const dateField = $("evaluationDate");
+
+    if (dateField && !dateField.value) {
+      dateField.value =
+        new Date().toISOString().split("T")[0];
+    }
+
+    const studentField = $("evaluationStudent");
+
+    if (studentField) {
+      studentField.focus();
+    }
+  };
+
+  const closeEvaluationEditor = () => {
+
+    const modal = getEvaluationModal();
+
+    if (modal) {
+      modal.classList.add("hidden");
+    }
+  };
+
+  // ---------------------------------------------------------
+  // NOVA AVALIAÇÃO
+  // ---------------------------------------------------------
+  // ---------------------------------------------------------
+  // CARREGAR ALUNOS NO SELECT DA AVALIAÇÃO
+  // ---------------------------------------------------------
+
+  function populateEvaluationStudents() {
+
+    const select = $("evaluationStudent");
+
+    if (!select) return;
+
+    const currentValue = select.value;
+
+    select.innerHTML =
+      `<option value="">Selecione o aluno</option>`;
+
+    const students =
+      Array.isArray(studentsCache)
+        ? studentsCache
+        : [];
+
+    students
+      .filter(student => student.status !== "inativo")
+      .sort((a, b) =>
+        String(a.nome || "")
+          .localeCompare(
+            String(b.nome || ""),
+            "pt-BR"
+          )
+      )
+      .forEach(student => {
+
+        const option =
+          document.createElement("option");
+
+        option.value = student.id;
+
+        option.textContent =
+          student.matricula
+            ? `${student.matricula} - ${student.nome}`
+            : student.nome;
+
+        select.appendChild(option);
+
+      });
+
+    if (currentValue) {
+      select.value = currentValue;
+    }
+  }
+  if (newEvaluationBtn) {
+
+    newEvaluationBtn.addEventListener(
+      "click",
+      event => {
+        event.preventDefault();
+        openEvaluationEditor();
+      }
+    );
+
+  }
+
+  // ---------------------------------------------------------
+  // CANCELAR
+  // ---------------------------------------------------------
+
+  if (cancelEvaluationBtn) {
+
+    cancelEvaluationBtn.addEventListener(
+      "click",
+      event => {
+        event.preventDefault();
+        closeEvaluationEditor();
+      }
+    );
+
+  }
+
+  // ---------------------------------------------------------
+  // CONVERTER NÚMERO
+  // ---------------------------------------------------------
+
+  const numberValue = id => {
+
+    const element = $(id);
+
+    if (!element || element.value === "") {
+      return null;
+    }
+
+    const value = Number(element.value);
+
+    return Number.isFinite(value)
+      ? value
+      : null;
+  };
+
+  // ---------------------------------------------------------
+  // SALVAR AVALIAÇÃO
+  // ---------------------------------------------------------
+
+  async function saveEvaluation(event) {
+
+    event.preventDefault();
+
+    const alunoId =
+      $("evaluationStudent")?.value;
+
+    const dataAvaliacao =
+      $("evaluationDate")?.value;
+
+    if (!alunoId) {
+      return toast(
+        "Selecione o aluno.",
+        true
+      );
+    }
+
+    if (!dataAvaliacao) {
+      return toast(
+        "Informe a data da avaliação.",
+        true
+      );
+    }
+
+    // =======================================================
+    // DADOS PRINCIPAIS
+    // =======================================================
+
+    const payload = {
+
+      aluno_id:
+        alunoId,
+
+      avaliado_em:
+        dataAvaliacao,
+
+      peso_kg:
+        numberValue("evaluationWeight"),
+
+      gordura_percent:
+        numberValue("evaluationBodyFat"),
+
+      massa_muscular_kg:
+        numberValue("evaluationMuscleMass"),
+
+      agua_percent:
+        numberValue("evaluationWater"),
+
+      gordura_visceral:
+        numberValue("evaluationVisceralFat"),
+
+      massa_ossea_kg:
+        numberValue("evaluationBoneMass"),
+
+      metabolismo_basal:
+        numberValue("evaluationBasalMetabolism"),
+
+      idade_metabolica:
+        numberValue("evaluationMetabolicAge"),
+
+      origem:
+        "manual",
+
+      observacao:
+        $("evaluationNotes")?.value?.trim() || null
+
+    };
+
+    // =======================================================
+    // 14 MEDIDAS CORPORAIS
+    // =======================================================
+
+    const medidasPayload = {
+
+      pescoco:
+        numberValue("evaluationNeck"),
+
+      ombros:
+        numberValue("evaluationShoulders"),
+
+      peitoral:
+        numberValue("evaluationChest"),
+
+      cintura:
+        numberValue("evaluationWaist"),
+
+      abdomen:
+        numberValue("evaluationAbdomen"),
+
+      quadril:
+        numberValue("evaluationHip"),
+
+      braco_direito:
+        numberValue("evaluationRightArm"),
+
+      braco_esquerdo:
+        numberValue("evaluationLeftArm"),
+
+      antebraco_direito:
+        numberValue("evaluationRightForearm"),
+
+      antebraco_esquerdo:
+        numberValue("evaluationLeftForearm"),
+
+      coxa_direita:
+        numberValue("evaluationRightThigh"),
+
+      coxa_esquerda:
+        numberValue("evaluationLeftThigh"),
+
+      panturrilha_direita:
+        numberValue("evaluationRightCalf"),
+
+      panturrilha_esquerda:
+        numberValue("evaluationLeftCalf")
+
+    };
+
+    // =======================================================
+    // MODO DEMONSTRAÇÃO
+    // =======================================================
+
+    if (demoMode) {
+
+      let cache = JSON.parse(
+        localStorage.getItem(
+          "thm_demo_avaliacoes"
+        ) || "[]"
+      );
+
+      const evaluationId =
+        $("evaluationId")?.value;
+
+      const now =
+        new Date().toISOString();
+
+      if (evaluationId) {
+
+        const index =
+          cache.findIndex(
+            item =>
+              String(item.id) ===
+              String(evaluationId)
+          );
+
+        if (index >= 0) {
+
+          cache[index] = {
+            ...cache[index],
+            ...payload,
+            medidas_corporais:
+              medidasPayload,
+            atualizado_em:
+              now
+          };
+
+        }
+
+      } else {
+
+        cache.unshift({
+
+          id:
+            crypto.randomUUID(),
+
+          ...payload,
+
+          medidas_corporais:
+            medidasPayload,
+
+          criado_em:
+            now,
+
+          atualizado_em:
+            now
+
+        });
+
+      }
+
+      localStorage.setItem(
+        "thm_demo_avaliacoes",
+        JSON.stringify(cache)
+      );
+
+      closeEvaluationEditor();
+
+      toast(
+        "Avaliação salva com sucesso."
+      );
+
+      return;
+    }
+
+    // =======================================================
+    // SALVAR NO SUPABASE
+    // =======================================================
+
+    const evaluationId =
+      $("evaluationId")?.value;
+
+    let response;
+
+    if (evaluationId) {
+
+      response =
+        await client
+          .from("avaliacoes")
+          .update(payload)
+          .eq("id", evaluationId)
+          .select("id")
+          .single();
+
+    } else {
+
+      response =
+        await client
+          .from("avaliacoes")
+          .insert(payload)
+          .select("id")
+          .single();
+
+    }
+
+    if (response.error) {
+
+      console.error(
+        "Erro ao salvar avaliação:",
+        response.error
+      );
+
+      return toast(
+        "Erro ao salvar avaliação: " +
+        response.error.message,
+        true
+      );
+
+    }
+
+    const savedEvaluationId =
+      evaluationId ||
+      response.data?.id;
+
+    if (!savedEvaluationId) {
+
+      return toast(
+        "Avaliação salva, mas não foi possível identificar o registro.",
+        true
+      );
+
+    }
+
+    // =======================================================
+    // SALVAR MEDIDAS CORPORAIS
+    // =======================================================
+
+    const existingMeasures =
+      await client
+        .from("medidas_corporais")
+        .select("id")
+        .eq(
+          "avaliacao_id",
+          savedEvaluationId
+        )
+        .maybeSingle();
+
+    if (existingMeasures.error) {
+
+      console.error(
+        "Erro ao verificar medidas corporais:",
+        existingMeasures.error
+      );
+
+      return toast(
+        "Avaliação salva, mas houve erro ao verificar as medidas.",
+        true
+      );
+
+    }
+
+    let medidasResponse;
+
+    if (existingMeasures.data?.id) {
+
+      medidasResponse =
+        await client
+          .from("medidas_corporais")
+          .update({
+            ...medidasPayload,
+            atualizado_em:
+              new Date().toISOString()
+          })
+          .eq(
+            "id",
+            existingMeasures.data.id
+          );
+
+    } else {
+
+      medidasResponse =
+        await client
+          .from("medidas_corporais")
+          .insert({
+            avaliacao_id:
+              savedEvaluationId,
+            ...medidasPayload
+          });
+
+    }
+
+    if (medidasResponse.error) {
+
+      console.error(
+        "Erro ao salvar medidas corporais:",
+        medidasResponse.error
+      );
+
+      return toast(
+        "Avaliação salva, mas houve erro nas medidas corporais: " +
+        medidasResponse.error.message,
+        true
+      );
+
+    }
+
+    // =======================================================
+    // FINALIZAÇÃO
+    // =======================================================
+
+    closeEvaluationEditor();
+
+    toast(
+      evaluationId
+        ? "Avaliação atualizada com sucesso."
+        : "Avaliação salva com sucesso."
+    );
+
+  }
+
+  // =========================================================
+  // EVENTO DO FORMULÁRIO
+  // =========================================================
+
+  evaluationForm.addEventListener(
+    "submit",
+    saveEvaluation
+  );
+
+})();
+// =========================================================
+// CÁLCULO AUTOMÁTICO DO IMC
+// =========================================================
+
+(() => {
+
+  const weightInput = $("evaluationWeight");
+  const heightInput = $("evaluationHeight");
+  const bmiInput = $("evaluationBmi");
+
+  if (!weightInput || !heightInput || !bmiInput) {
+    return;
+  }
+
+  function calculateEvaluationBmi() {
+
+    const peso = Number(weightInput.value);
+    const altura = Number(heightInput.value);
+
+    if (
+      !peso ||
+      !altura ||
+      peso <= 0 ||
+      altura <= 0
+    ) {
+      bmiInput.value = "";
+      return;
+    }
+
+    // Se a altura estiver em centímetros,
+    // converte para metros.
+    const alturaMetros =
+      altura > 3
+        ? altura / 100
+        : altura;
+
+    const imc =
+      peso /
+      (alturaMetros * alturaMetros);
+
+    bmiInput.value =
+      imc.toFixed(2);
+  }
+
+  weightInput.addEventListener(
+    "input",
+    calculateEvaluationBmi
+  );
+
+  heightInput.addEventListener(
+    "input",
+    calculateEvaluationBmi
+  );
+
+})();
+
+// =========================================================
+// HISTÓRICO DE AVALIAÇÕES
+// =========================================================
+
+(() => {
+
+  async function loadEvaluationHistory() {
+
+    const historyContainer =
+      $("evaluationHistory");
+
+    if (!historyContainer) {
+      return;
+    }
+
+    if (demoMode) {
+
+      const cache = JSON.parse(
+        localStorage.getItem(
+          "thm_demo_avaliacoes"
+        ) || "[]"
+      );
+
+      renderEvaluationHistory(cache);
+
+      return;
+    }
+
+    const { data, error } =
+      await client
+        .from("avaliacoes")
+        .select(`
+          id,
+          aluno_id,
+          avaliado_em,
+          peso_kg,
+          gordura_percent,
+          massa_muscular_kg,
+          agua_percent,
+          gordura_visceral,
+          massa_ossea_kg,
+          metabolismo_basal,
+          idade_metabolica,
+          origem,
+          observacao
+        `)
+        .order(
+          "avaliado_em",
+          {
+            ascending: false
+          }
+        );
+
+    if (error) {
+
+      console.error(
+        "Erro ao carregar histórico de avaliações:",
+        error
+      );
+
+      return;
+    }
+
+    renderEvaluationHistory(
+      data || []
+    );
+  }
+
+  function renderEvaluationHistory(
+    evaluations
+  ) {
+
+    const container =
+      $("evaluationHistory");
+
+    if (!container) {
+      return;
+    }
+
+    if (!evaluations.length) {
+
+      container.innerHTML =
+        `<p class="empty-state">
+          Nenhuma avaliação cadastrada.
+        </p>`;
+
+      return;
+    }
+
+    container.innerHTML =
+      evaluations.map(evaluation => {
+
+        const student =
+          Array.isArray(studentsCache)
+            ? studentsCache.find(
+                student =>
+                  String(student.id) ===
+                  String(evaluation.aluno_id)
+              )
+            : null;
+
+        const studentName =
+          student?.nome ||
+          "Aluno não encontrado";
+
+        const date =
+          evaluation.avaliado_em
+            ? new Date(
+                evaluation.avaliado_em +
+                "T00:00:00"
+              ).toLocaleDateString(
+                "pt-BR"
+              )
+            : "-";
+
+        return `
+          <div class="evaluation-history-item">
+
+            <div>
+              <strong>
+                ${esc(studentName)}
+              </strong>
+
+              <small>
+                Avaliação: ${date}
+              </small>
+            </div>
+
+            <div class="evaluation-history-data">
+
+              <span>
+                Peso:
+                ${evaluation.peso_kg ?? "-"} kg
+              </span>
+
+              <span>
+                Gordura:
+                ${evaluation.gordura_percent ?? "-"}%
+              </span>
+
+              <span>
+                Massa muscular:
+                ${evaluation.massa_muscular_kg ?? "-"} kg
+              </span>
+
+            </div>
+
+          </div>
+        `;
+
+      }).join("");
+  }
+
+  // Disponibiliza para o restante do sistema
+  window.loadEvaluationHistory =
+    loadEvaluationHistory;
+
+  // Carrega ao abrir a página de avaliações
+  const originalGoTo =
+    window.goTo;
+
+  if (typeof originalGoTo === "function") {
+
+    window.goTo = function(page) {
+
+      const result =
+        originalGoTo.apply(
+          this,
+          arguments
+        );
+
+      if (page === "avaliacoes") {
+
+        setTimeout(
+          () => {
+            loadEvaluationHistory();
+          },
+          0
+        );
+
+      }
+
+      return result;
+    };
+
+  }
+
+})();
+
+// =========================================================
+// HISTÓRICO DE AVALIAÇÕES - TABELA
+// =========================================================
+
+(() => {
+
+  async function loadEvaluationTable() {
+
+    const tableBody =
+      $("evaluationTableBody");
+
+    if (!tableBody) {
+      return;
+    }
+
+    if (demoMode) {
+
+      const cache = JSON.parse(
+        localStorage.getItem(
+          "thm_demo_avaliacoes"
+        ) || "[]"
+      );
+
+      renderEvaluationTable(cache);
+
+      return;
+    }
+
+    // -------------------------------------------------------
+    // GARANTIR QUE OS ALUNOS ESTEJAM CARREGADOS
+    // -------------------------------------------------------
+
+    if (
+      !Array.isArray(studentsCache) ||
+      !studentsCache.length
+    ) {
+
+      try {
+
+        const { data, error } =
+          await client
+            .from("alunos")
+            .select("*");
+
+        if (!error) {
+          studentsCache =
+            data || [];
+        }
+
+      } catch (error) {
+
+        console.error(
+          "Erro ao carregar alunos para avaliações:",
+          error
+        );
+
+      }
+
+    }
+
+    // -------------------------------------------------------
+    // CARREGAR AVALIAÇÕES
+    // -------------------------------------------------------
+
+    const { data, error } =
+      await client
+        .from("avaliacoes")
+        .select(`
+          id,
+          aluno_id,
+          avaliado_em,
+          peso_kg,
+          gordura_percent,
+          massa_muscular_kg,
+          agua_percent,
+          gordura_visceral,
+          observacao
+        `)
+        .order(
+          "avaliado_em",
+          {
+            ascending: false
+          }
+        );
+
+    if (error) {
+
+      console.error(
+        "Erro ao carregar histórico:",
+        error
+      );
+
+      return;
+    }
+
+    renderEvaluationTable(
+      data || []
+    );
+  }
+
+  // =========================================================
+  // RENDERIZAR TABELA
+  // =========================================================
+
+  function renderEvaluationTable(
+    evaluations
+  ) {
+
+    const tableBody =
+      $("evaluationTableBody");
+
+    if (!tableBody) {
+      return;
+    }
+
+    if (!evaluations.length) {
+
+      tableBody.innerHTML = `
+        <tr>
+          <td colspan="7">
+            Nenhuma avaliação cadastrada.
+          </td>
+        </tr>
+      `;
+
+      return;
+    }
+
+    tableBody.innerHTML =
+      evaluations.map(
+        evaluation => {
+
+          // -----------------------------------------------
+          // LOCALIZAR ALUNO
+          // -----------------------------------------------
+
+          const student =
+            Array.isArray(studentsCache)
+              ? studentsCache.find(
+                  student =>
+                    String(student.id) ===
+                    String(evaluation.aluno_id)
+                )
+              : null;
+
+          const studentName =
+            student?.nome ||
+            student?.nome_completo ||
+            "Aluno não encontrado";
+
+          // -----------------------------------------------
+          // FORMATAR DATA
+          // -----------------------------------------------
+
+          let formattedDate = "-";
+
+          if (evaluation.avaliado_em) {
+
+            const date =
+              new Date(
+                evaluation.avaliado_em
+              );
+
+            if (
+              !Number.isNaN(
+                date.getTime()
+              )
+            ) {
+
+              formattedDate =
+                date.toLocaleDateString(
+                  "pt-BR"
+                );
+
+            } else {
+
+              formattedDate =
+                String(
+                  evaluation.avaliado_em
+                );
+
+            }
+
+          }
+
+          return `
+            <tr>
+
+              <td>
+                ${esc(studentName)}
+              </td>
+
+              <td>
+                ${formattedDate}
+              </td>
+
+              <td>
+                ${evaluation.peso_kg ?? "-"} kg
+              </td>
+
+              <td>
+                ${evaluation.gordura_percent ?? "-"}%
+              </td>
+
+              <td>
+                ${evaluation.massa_muscular_kg ?? "-"} kg
+              </td>
+
+              <td>
+                ${evaluation.agua_percent ?? "-"}%
+              </td>
+
+              <td>
+                ${evaluation.gordura_visceral ?? "-"}
+              </td>
+<td>
+<button
+  type="button"
+  class="secondary"
+  onclick="editEvaluation('${evaluation.id}')"
+>
+  Editar
+</button>
+</td>
+            </tr>
+          `;
+
+        }
+      ).join("");
+  }
+  document
+    .querySelectorAll(".evaluation-edit-btn")
+    .forEach(button => {
+
+      button.addEventListener(
+        "click",
+        () => {
+
+          const evaluationId =
+            button.dataset.id;
+
+          editEvaluation(
+            evaluationId
+          );
+
+        }
+      );
+
+    });
+  window.loadEvaluationTable =
+    loadEvaluationTable;
+
+  // ---------------------------------------------------------
+  // CARREGAR
+  // ---------------------------------------------------------
+
+  loadEvaluationTable();
+
+})();
+
+// =========================================================
+// EDITAR AVALIAÇÃO
+// =========================================================
+
+async function editEvaluation(evaluationId) {
+
+  if (!evaluationId) {
+    return;
+  }
+
+  const { data, error } =
+    await client
+      .from("avaliacoes")
+      .select("*")
+      .eq("id", evaluationId)
+      .single();
+
+  if (error) {
+
+    console.error(
+      "Erro ao carregar avaliação:",
+      error
+    );
+
+    return toast(
+      "Erro ao carregar avaliação.",
+      true
+    );
+
+  }
+
+  const evaluation =
+    data;
+
+  $("evaluationId").value =
+    evaluation.id;
+
+  $("evaluationStudent").value =
+    evaluation.aluno_id;
+
+  $("evaluationDate").value =
+    evaluation.avaliado_em || "";
+
+  $("evaluationWeight").value =
+    evaluation.peso_kg ?? "";
+
+  $("evaluationBodyFat").value =
+    evaluation.gordura_percent ?? "";
+
+  $("evaluationMuscleMass").value =
+    evaluation.massa_muscular_kg ?? "";
+
+  $("evaluationWater").value =
+    evaluation.agua_percent ?? "";
+
+  $("evaluationVisceralFat").value =
+    evaluation.gordura_visceral ?? "";
+
+  $("evaluationNotes").value =
+    evaluation.observacao ?? "";
+
+  // ---------------------------------------------------------
+  // CARREGAR MEDIDAS CORPORAIS
+  // ---------------------------------------------------------
+
+  const {
+    data: medidas,
+    error: medidasError
+  } = await client
+    .from("medidas_corporais")
+    .select("*")
+    .eq(
+      "avaliacao_id",
+      evaluationId
+    )
+    .maybeSingle();
+
+  if (medidasError) {
+
+    console.error(
+      "Erro ao carregar medidas:",
+      medidasError
+    );
+
+  }
+
+  if (medidas) {
+
+    $("evaluationNeck").value =
+      medidas.pescoco ?? "";
+
+    $("evaluationShoulders").value =
+      medidas.ombros ?? "";
+
+    $("evaluationChest").value =
+      medidas.peitoral ?? "";
+
+    $("evaluationWaist").value =
+      medidas.cintura ?? "";
+
+    $("evaluationAbdomen").value =
+      medidas.abdomen ?? "";
+
+    $("evaluationHip").value =
+      medidas.quadril ?? "";
+
+    $("evaluationRightArm").value =
+      medidas.braco_direito ?? "";
+
+    $("evaluationLeftArm").value =
+      medidas.braco_esquerdo ?? "";
+
+    $("evaluationRightForearm").value =
+      medidas.antebraco_direito ?? "";
+
+    $("evaluationLeftForearm").value =
+      medidas.antebraco_esquerdo ?? "";
+
+    $("evaluationRightThigh").value =
+      medidas.coxa_direita ?? "";
+
+    $("evaluationLeftThigh").value =
+      medidas.coxa_esquerda ?? "";
+
+    $("evaluationRightCalf").value =
+      medidas.panturrilha_direita ?? "";
+
+    $("evaluationLeftCalf").value =
+      medidas.panturrilha_esquerda ?? "";
+
+  }
+
+  // ---------------------------------------------------------
+  // ABRIR EDITOR
+  // ---------------------------------------------------------
+
+  const editor =
+    $("evaluationEditor");
+
+  if (editor) {
+    editor.classList.remove("hidden");
+  }
+
+}
