@@ -5956,45 +5956,49 @@ function renderWorkouts() {
               </td>
 
 
-              <td>
+<td>
 
-                <div
-                  style="
-                    display:flex;
-                    gap:6px;
-                    flex-wrap:wrap;
-                  "
-                >
+<div
+    style="
+      display:flex;
+      gap:5px;
+      flex-wrap:wrap;
+      align-items:center;
+    "
+  >
 
-                  <button
-                    type="button"
-                    class="secondary"
-                    onclick="viewWorkout('${workout.id}')"
-                  >
-                    Ver ficha
-                  </button>
-
-
-                  <button
-                    type="button"
-                    class="secondary"
-                    onclick="editWorkout('${workout.id}')"
-                  >
-                    Editar
-                  </button>
+    <button
+      type="button"
+      class="secondary"
+      onclick="viewWorkout('${workout.id}')"
+      title="Visualizar ficha"
+    >
+      👁 Ver
+    </button>
 
 
-                  <button
-                    type="button"
-                    class="secondary"
-                    onclick="duplicateWorkout('${workout.id}')"
-                  >
-                    Duplicar
-                  </button>
+    <button
+      type="button"
+      class="secondary"
+      onclick="editWorkout('${workout.id}')"
+      title="Editar ficha"
+    >
+      ✏️ Editar
+    </button>
 
-                </div>
 
-              </td>
+    <button
+      type="button"
+      class="secondary"
+      onclick="duplicateWorkout('${workout.id}')"
+      title="Duplicar ficha"
+    >
+      📋 Duplicar
+    </button>
+
+  </div>
+
+</td>
 
             </tr>
 
