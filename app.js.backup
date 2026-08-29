@@ -1,0 +1,7770 @@
+const { createClient } = window.supabase;
+
+const client = createClient(
+  THM_CONFIG.SUPABASE_URL,
+  THM_CONFIG.SUPABASE_PUBLISHABLE_KEY,
+  {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true
+    }
+  }
+);
+const supabaseClient = client;
+
+let demoMode = false;
+let studentsCache = [];
+
+const $ = id => document.getElementById(id);
+
+function toast(message, error = false) {
+  const element = $("toast");
+
+  element.textContent = message;
+  element.className = `toast show${error ? " error" : ""}`;
+
+  setTimeout(() => {
+    element.className = "toast";
+  }, 3000);
+}
+
+function esc(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function showApp(label) {
+  $("loginScreen").classList.add("hidden");
+  $("app").classList.remove("hidden");
+
+  $("userLabel").textContent = label;
+
+  goTo("dashboard");
+  loadAll();
+}
+
+function goTo(page) {
+
+  document
+    .querySelectorAll(".page")
+    .forEach(pageElement => {
+      pageElement.classList.add("hidden");
+    });
+
+  $(`${page}Page`)?.classList.remove("hidden");
+
+  document
+    .querySelectorAll("[data-page]")
+    .forEach(button => {
+      button.classList.toggle(
+        "active",
+        button.dataset.page === page
+      );
+    });
+
+  const titles = {
+    dashboard: "Início",
+    alunos: "Alunos",
+    financeiro: "Financeiro",
+    acessos: "Acessos",
+    comercial: "Comercial",
+    treinos: "Treinos",
+    avaliacoes: "Avaliações",
+    relatorios: "Relatórios"
+  };
+
+  $("pageTitle").textContent =
+    titles[page] || page;
+
+  if (page === "alunos") {
+    renderStudents();
+  }
+
+  if (page === "financeiro") {
+    loadFinance();
+  }
+  if (page === "treinos") {
+    loadWorkouts();
+  }
+  if (page === "acessos") {
+    loadAccesses();
+  }
+
+}
+
+async function loadAll() {
+
+  if (demoMode) {
+
+    studentsCache = JSON.parse(
+      localStorage.getItem(
+        "thm_demo_students"
+      ) || "[]"
+    );
+
+    updateStats();
+    renderStudents();
+    renderRecent();
+
+    return;
+  }
+
+  const [
+    students,
+    financial,
+    accesses,
+    workouts
+  ] = await Promise.all([
+
+    client
+      .from("alunos")
+      .select(`
+        id,
+        nome,
+        cpf,
+        telefone,
+        data_nascimento,
+        objetivo,
+        plano,
+        plano_id,
+        status,
+        ciclo,
+        criado_em,
+        matricula,
+        data_matricula,
+        data_inicio,
+        observacoes,
+        responsavel,
+        telefone_responsavel,
+        cep,
+        estado,
+        rua,
+        numero,
+        complemento,
+        bairro,
+        cidade
+      `)
+      .order("nome"),
+
+    client
+      .from("financeiro")
+      .select("id", {
+        count: "exact",
+        head: true
+      }),
+
+    client
+      .from("acessos")
+      .select("id", {
+        count: "exact",
+        head: true
+      }),
+
+    client
+      .from("treinos")
+      .select("id", {
+        count: "exact",
+        head: true
+      })
+
+  ]);
+
+  if (students.error) {
+    return toast(
+      students.error.message,
+      true
+    );
+  }
+
+  studentsCache =
+    students.data || [];
+
+  $("statAlunos").textContent =
+    studentsCache.filter(
+      student =>
+        student.status === "ativo"
+    ).length;
+
+  $("statFinanceiro").textContent =
+    financial.count ?? 0;
+
+  $("statAcessos").textContent =
+    accesses.count ?? 0;
+
+  $("statTreinos").textContent =
+    workouts.count ?? 0;
+
+  renderStudents();
+  renderRecent();
+}
+
+function updateStats() {
+
+  $("statAlunos").textContent =
+    studentsCache.filter(
+      student =>
+        student.status === "ativo"
+    ).length;
+
+  [
+    "statFinanceiro",
+    "statAcessos",
+    "statTreinos"
+  ].forEach(id => {
+    $(id).textContent = "—";
+  });
+}
+
+function renderRecent() {
+
+  $("recentStudents").innerHTML =
+    studentsCache
+      .slice(0, 5)
+      .map(student => `
+
+        <div class="simple-item">
+
+          <span>
+            ${esc(student.nome)}
+          </span>
+
+          <span class="status ${student.status}">
+            ${esc(student.status)}
+          </span>
+
+        </div>
+
+      `)
+      .join("")
+    ||
+    `
+        <div class="simple-item">
+          Nenhum aluno cadastrado.
+        </div>
+      `;
+}
+
+function renderStudents() {
+
+  const search =
+    ($("studentSearch")?.value || "")
+      .toLowerCase();
+
+  const status =
+    $("studentStatus")?.value ||
+    "todos";
+
+  const rows =
+    studentsCache.filter(student => {
+
+      const matchesStatus =
+        status === "todos" ||
+        student.status === status;
+
+      const searchText = [
+        student.nome,
+        student.cpf,
+        student.telefone,
+        student.matricula
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      return (
+        matchesStatus &&
+        searchText.includes(search)
+      );
+    });
+
+  $("studentsTable").innerHTML = `
+
+    <table class="table">
+
+      <thead>
+
+        <tr>
+
+          <th>Matrícula</th>
+          <th>Nome</th>
+          <th>CPF</th>
+          <th>Telefone</th>
+          <th>Plano</th>
+          <th>Status</th>
+          <th>Ciclo</th>
+          <th>Ações</th>
+
+        </tr>
+
+      </thead>
+
+      <tbody>
+
+        ${rows
+      .map(student => `
+
+              <tr>
+
+                <td>
+                  ${esc(
+        student.matricula ||
+        "—"
+      )}
+                </td>
+
+                <td>
+                  <strong>
+                    ${esc(student.nome)}
+                  </strong>
+                </td>
+
+                <td>
+                  ${esc(
+        student.cpf ||
+        "—"
+      )}
+                </td>
+
+                <td>
+                  ${esc(
+        student.telefone ||
+        "—"
+      )}
+                </td>
+
+                <td>
+                  ${esc(
+        student.plano ||
+        "—"
+      )}
+                </td>
+
+                <td>
+
+                  <span
+                    class="status ${student.status}"
+                  >
+                    ${esc(student.status)}
+                  </span>
+
+                </td>
+
+                <td>
+                  ${student.ciclo ?? 1}
+                </td>
+
+                <td>
+
+                  <button
+                    class="mini"
+                    data-edit="${student.id}"
+                  >
+                    Editar
+                  </button>
+
+                  ${student.status === "inativo"
+          ?
+          `
+                        <button
+                          class="mini"
+                          data-reuse="${student.id}"
+                        >
+                          ♻ Reaproveitar
+                        </button>
+                      `
+          :
+          ""
+        }
+
+                </td>
+
+              </tr>
+
+            `)
+      .join("")
+    }
+
+        ${rows.length === 0
+      ?
+      `
+              <tr>
+                <td colspan="8">
+                  Nenhum aluno encontrado.
+                </td>
+              </tr>
+            `
+      :
+      ""
+    }
+
+      </tbody>
+
+    </table>
+  `;
+
+  document
+    .querySelectorAll("[data-edit]")
+    .forEach(button => {
+
+      button.onclick = () => {
+        openStudent(
+          button.dataset.edit
+        );
+      };
+
+    });
+
+  document
+    .querySelectorAll("[data-reuse]")
+    .forEach(button => {
+
+      button.onclick = () => {
+        reuseStudent(
+          button.dataset.reuse
+        );
+      };
+
+    });
+}
+
+function closeModal() {
+
+  $("studentModal")
+    .classList.add("hidden");
+
+  $("studentForm").reset();
+
+  $("studentId").value = "";
+}
+
+function openStudent(id) {
+
+  const student =
+    studentsCache.find(
+      item => item.id === id
+    );
+
+  if (!student) return;
+
+  $("studentId").value =
+    student.id;
+
+  $("studentMatricula").value =
+    student.matricula || "";
+
+  $("studentName").value =
+    student.nome || "";
+
+  $("studentCpf").value =
+    student.cpf || "";
+
+  $("studentPhone").value =
+    student.telefone || "";
+
+  $("studentBirth").value =
+    student.data_nascimento || "";
+
+  $("studentGoal").value =
+    student.objetivo || "";
+
+  $("studentPlan").value =
+    student.plano || "";
+  $("studentDescontoMatricula").checked = false;
+
+  $("studentStatusForm").value =
+    student.status || "ativo";
+
+  $("studentDataMatricula").value =
+    student.data_matricula || "";
+
+  $("studentDataInicio").value =
+    student.data_inicio || "";
+
+  $("studentResponsavel").value =
+    student.responsavel || "";
+
+  $("studentTelefoneResponsavel").value =
+    student.telefone_responsavel || "";
+
+  $("studentCep").value =
+    student.cep || "";
+
+  $("studentEstado").value =
+    student.estado || "";
+
+  $("studentRua").value =
+    student.rua || "";
+
+  $("studentNumero").value =
+    student.numero || "";
+
+  $("studentComplemento").value =
+    student.complemento || "";
+
+  $("studentBairro").value =
+    student.bairro || "";
+
+  $("studentCidade").value =
+    student.cidade || "";
+
+  $("studentObservacoes").value =
+    student.observacoes || "";
+
+  $("modalTitle").textContent =
+    "Editar aluno";
+
+  $("studentModal")
+    .classList.remove("hidden");
+}
+
+async function saveStudent(event) {
+  event.preventDefault();
+
+  const id =
+    $("studentId").value;
+
+  const isNewStudent = !id;
+
+  const descontoMatricula =
+    isNewStudent &&
+    $("studentDescontoMatricula")?.checked === true;
+
+  const taxaMatricula =
+    descontoMatricula ? 0 : 10;
+
+  const data = {
+
+    matricula:
+      $("studentMatricula")
+        .value
+        .trim() || null,
+
+    nome:
+      $("studentName")
+        .value
+        .trim(),
+
+    cpf:
+      $("studentCpf")
+        .value
+        .trim() || null,
+
+    telefone:
+      $("studentPhone")
+        .value
+        .trim() || null,
+
+    data_nascimento:
+      $("studentBirth")
+        .value || null,
+
+    objetivo:
+      $("studentGoal")
+        .value || null,
+
+    plano:
+      $("studentPlan")
+        .value
+        .trim() || null,
+
+    status:
+      $("studentStatusForm")
+        .value,
+
+    data_matricula:
+      $("studentDataMatricula")
+        .value || null,
+
+    data_inicio:
+      $("studentDataInicio")
+        .value || null,
+
+    responsavel:
+      $("studentResponsavel")
+        .value
+        .trim() || null,
+
+    telefone_responsavel:
+      $("studentTelefoneResponsavel")
+        .value
+        .trim() || null,
+
+    cep:
+      $("studentCep")
+        .value
+        .trim() || null,
+
+    estado:
+      $("studentEstado")
+        .value
+        .trim()
+        .toUpperCase() || null,
+
+    rua:
+      $("studentRua")
+        .value
+        .trim() || null,
+
+    numero:
+      $("studentNumero")
+        .value
+        .trim() || null,
+
+    complemento:
+      $("studentComplemento")
+        .value
+        .trim() || null,
+
+    bairro:
+      $("studentBairro")
+        .value
+        .trim() || null,
+
+    cidade:
+      $("studentCidade")
+        .value
+        .trim() || null,
+
+    observacoes:
+      $("studentObservacoes")
+        .value
+        .trim() || null
+  };
+
+  if (!data.nome) {
+
+    return toast(
+      "Informe o nome.",
+      true
+    );
+  }
+
+  if (demoMode) {
+
+    if (id) {
+
+      studentsCache =
+        studentsCache.map(
+          student =>
+            student.id === id
+              ?
+              {
+                ...student,
+                ...data
+              }
+              :
+              student
+        );
+
+    } else {
+
+      studentsCache = [
+
+        {
+          id: crypto.randomUUID(),
+
+          ...data,
+
+          ciclo: 1,
+
+          criado_em:
+            new Date().toISOString()
+        },
+
+        ...studentsCache
+
+      ];
+    }
+
+    localStorage.setItem(
+      "thm_demo_students",
+      JSON.stringify(
+        studentsCache
+      )
+    );
+
+    closeModal();
+
+    updateStats();
+    renderStudents();
+    renderRecent();
+
+    return toast(
+      "Aluno salvo."
+    );
+  }
+
+  const result = id
+
+    ?
+
+    await client
+      .from("alunos")
+      .update(data)
+      .eq("id", id)
+      .select()
+      .single()
+
+    :
+
+    await client
+      .from("alunos")
+      .insert({
+        ...data,
+        ciclo: 1
+      })
+      .select()
+      .single();
+
+  if (result.error) {
+
+    return toast(
+      result.error.message,
+      true
+    );
+  }
+  if (!id && taxaMatricula > 0) {
+    const alunoId = result.data?.id;
+
+    console.log("ALUNO CRIADO:", result.data);
+    console.log("ID DO ALUNO:", alunoId);
+    console.log("TAXA MATRÍCULA:", taxaMatricula);
+
+    if (alunoId) {
+      const dataMatricula =
+        $("studentDataMatricula")?.value ||
+        new Date().toISOString().slice(0, 10);
+
+      const financeiroResult =
+        await client
+          .from("financeiro")
+          .insert({
+            aluno_id: alunoId,
+            tipo: "matricula",
+            status: "Pendente",
+            descricao: "Taxa de matrícula",
+            valor: taxaMatricula,
+            data_vencimento: dataMatricula,
+            data_pagamento: null,
+            forma_pagamento: null,
+            observacoes: "Taxa de matrícula do novo cadastro"
+          });
+
+      if (financeiroResult.error) {
+        console.error(
+          "Erro ao criar taxa de matrícula:",
+          financeiroResult.error
+        );
+
+        toast(
+          "Aluno cadastrado, mas houve um erro ao criar a taxa de matrícula.",
+          true
+        );
+      }
+    }
+  }
+  closeModal();
+
+  await loadAll();
+
+  toast(
+    id
+      ?
+      "Aluno atualizado."
+      :
+      "Aluno cadastrado com sucesso."
+  );
+}
+
+async function reuseStudent(id) {
+
+  const oldStudent =
+    studentsCache.find(
+      student =>
+        student.id === id
+    );
+
+  if (!oldStudent) return;
+
+  if (
+    !confirm(
+      `Reaproveitar o cadastro de "${oldStudent.nome}"? O histórico anterior será preservado.`
+    )
+  ) {
+    return;
+  }
+
+  const name =
+    prompt(
+      "Nome do novo aluno:"
+    );
+
+  if (!name?.trim()) return;
+
+  const data = {
+
+    matricula: null,
+
+    nome: name.trim(),
+
+    cpf: null,
+    telefone: null,
+    data_nascimento: null,
+
+    objetivo: null,
+    plano: null,
+
+    status: "ativo",
+
+    data_matricula: null,
+    data_inicio: null,
+
+    responsavel: null,
+    telefone_responsavel: null,
+
+    cep: null,
+    estado: null,
+    rua: null,
+    numero: null,
+    complemento: null,
+    bairro: null,
+    cidade: null,
+
+    observacoes: null,
+
+    ciclo:
+      (oldStudent.ciclo || 1) + 1
+  };
+
+  if (demoMode) {
+
+    studentsCache.unshift({
+      id: crypto.randomUUID(),
+      ...data
+    });
+
+    localStorage.setItem(
+      "thm_demo_students",
+      JSON.stringify(
+        studentsCache
+      )
+    );
+
+    updateStats();
+    renderStudents();
+    renderRecent();
+
+    return toast(
+      "Novo ciclo criado."
+    );
+  }
+
+  const result =
+    await client
+      .from("alunos")
+      .insert(data);
+
+  if (result.error) {
+
+    return toast(
+      result.error.message,
+      true
+    );
+  }
+
+  await loadAll();
+
+  toast(
+    "Novo cadastro criado."
+  );
+}
+
+async function buscarCep() {
+
+  const cepInput =
+    $("studentCep");
+
+  if (!cepInput) return;
+
+  const cep =
+    cepInput.value
+      .replace(/\D/g, "");
+
+  if (cep.length !== 8) {
+    return;
+  }
+
+  cepInput.value =
+    cep.substring(0, 5) +
+    "-" +
+    cep.substring(5);
+
+  try {
+
+    const response =
+      await fetch(
+        `https://viacep.com.br/ws/${cep}/json/`
+      );
+
+    if (!response.ok) {
+      throw new Error(
+        "Erro na consulta."
+      );
+    }
+
+    const data =
+      await response.json();
+
+    if (data.erro) {
+
+      return toast(
+        "CEP não encontrado.",
+        true
+      );
+    }
+
+    $("studentRua").value =
+      data.logradouro || "";
+
+    $("studentBairro").value =
+      data.bairro || "";
+
+    $("studentCidade").value =
+      data.localidade || "";
+
+    $("studentEstado").value =
+      (data.uf || "")
+        .toUpperCase();
+
+    $("studentNumero").focus();
+
+    toast(
+      "Endereço encontrado."
+    );
+
+  } catch (error) {
+
+    console.error(error);
+
+    toast(
+      "Não foi possível consultar o CEP.",
+      true
+    );
+  }
+}
+
+function formatCep(event) {
+
+  let value =
+    event.target.value
+      .replace(/\D/g, "");
+
+  if (value.length > 8) {
+    value =
+      value.substring(0, 8);
+  }
+
+  if (value.length > 5) {
+
+    value =
+      value.substring(0, 5) +
+      "-" +
+      value.substring(5);
+  }
+
+  event.target.value =
+    value;
+
+  if (
+    value.replace(/\D/g, "")
+      .length === 8
+  ) {
+    buscarCep();
+  }
+}
+
+async function login(event) {
+
+  event.preventDefault();
+
+  const {
+    data,
+    error
+  } =
+    await client.auth
+      .signInWithPassword({
+
+        email:
+          $("loginEmail")
+            .value
+            .trim(),
+
+        password:
+          $("loginPassword")
+            .value
+
+      });
+
+  if (error) {
+
+    return toast(
+      error.message,
+      true
+    );
+  }
+
+  showApp(
+    data.user.email
+  );
+}
+
+async function logout() {
+
+  if (!demoMode) {
+    await client.auth.signOut();
+  }
+
+  demoMode = false;
+
+  $("app")
+    .classList.add("hidden");
+
+  $("loginScreen")
+    .classList.remove("hidden");
+
+  $("loginPassword")
+    .value = "";
+}
+
+document.addEventListener(
+  "click",
+  event => {
+
+    const button =
+      event.target.closest(
+        "[data-page]"
+      );
+
+    if (button) {
+
+      goTo(
+        button.dataset.page
+      );
+    }
+  }
+);
+
+$("loginForm")
+  .addEventListener(
+    "submit",
+    login
+  );
+
+$("demoBtn").onclick = () => {
+
+  demoMode = true;
+
+  showApp(
+    "Demonstração"
+  );
+};
+
+$("logoutBtn")
+  .onclick = logout;
+
+$("newStudentBtn").onclick = async () => {
+  $("studentForm").reset();
+  $("studentId").value = "";
+
+  let alunos = [];
+
+  if (demoMode) {
+    alunos = studentsCache || [];
+  } else {
+    const result =
+      await client
+        .from("alunos")
+        .select("matricula");
+
+    if (result.error) {
+      console.error(
+        "Erro ao buscar matrículas:",
+        result.error
+      );
+
+      return toast(
+        "Não foi possível gerar a matrícula.",
+        true
+      );
+    }
+
+    alunos = result.data || [];
+  }
+
+  const matriculas = alunos
+    .map(aluno =>
+      Number(aluno.matricula)
+    )
+    .filter(numero =>
+      Number.isInteger(numero) &&
+      numero > 0
+    );
+
+  const maiorMatricula =
+    matriculas.length
+      ? Math.max(...matriculas)
+      : 0;
+
+  const proximaMatricula =
+    maiorMatricula + 1;
+
+  if (proximaMatricula > 5000) {
+    return toast(
+      "Limite de 5000 matrículas atingido.",
+      true
+    );
+  }
+
+  $("studentMatricula").value =
+    proximaMatricula;
+
+  $("modalTitle").textContent =
+    "Novo aluno";
+
+  $("studentModal")
+    .classList.remove("hidden");
+};
+
+$("closeModal")
+  .onclick = closeModal;
+
+$("cancelModal")
+  .onclick = closeModal;
+
+$("studentForm")
+  .addEventListener(
+    "submit",
+    saveStudent
+  );
+
+$("studentSearch")
+  .addEventListener(
+    "input",
+    renderStudents
+  );
+
+$("studentStatus")
+  .addEventListener(
+    "change",
+    renderStudents
+  );
+
+$("studentCep")
+  .addEventListener(
+    "input",
+    formatCep
+  );
+
+/* =========================================================
+   ACESSOS - MODAL DE REGISTRO
+   ========================================================= */
+
+const newAccessBtn =
+  document.getElementById("newAccessBtn");
+
+const accessModal =
+  document.getElementById("accessModal");
+
+const closeAccessModal =
+  document.getElementById("closeAccessModal");
+
+const cancelAccessModal =
+  document.getElementById("cancelAccessModal");
+
+
+if (newAccessBtn) {
+
+  newAccessBtn.onclick = () => {
+
+    const form =
+      document.getElementById("accessForm");
+
+    if (form) {
+      form.reset();
+    }
+
+    loadAccessStudents();
+
+    const equipment =
+      document.getElementById(
+        "accessEquipment"
+      );
+
+    if (equipment) {
+      equipment.value =
+        "Simulação manual";
+    }
+
+    if (accessModal) {
+      accessModal.classList.remove(
+        "hidden"
+      );
+    }
+
+  };
+
+}
+const checkAccessBtn =
+  document.getElementById("checkAccessBtn");
+
+if (checkAccessBtn) {
+
+  checkAccessBtn.onclick = () => {
+
+    const studentId =
+      document.getElementById(
+        "accessStudent"
+      )?.value;
+
+    if (!studentId) {
+      return toast(
+        "Selecione um aluno primeiro.",
+        true
+      );
+    }
+
+    const student =
+      studentsCache.find(
+        item =>
+          item.id === studentId
+      );
+
+    const decision =
+      getAutomaticAccessDecision(
+        student
+      );
+
+    const result =
+      document.getElementById(
+        "accessResult"
+      );
+
+    if (result) {
+      result.value =
+        decision.resultado;
+    }
+
+    toast(
+      decision.motivo,
+      decision.resultado ===
+      "bloqueado"
+    );
+  };
+
+}
+
+/* =========================================================
+   REGISTRAR RESULTADO DA SIMULAÇÃO TOPDATA
+   ========================================================= */
+
+async function registerTopdataAccess(
+  student,
+  decision
+) {
+  if (!student) return;
+
+  const accessData = {
+    aluno_id: student.id,
+    equipamento: "Simulação Topdata",
+    tipo: "entrada",
+    resultado: decision.resultado,
+    ocorrido_em: new Date().toISOString(),
+    origem: "topdata_simulacao"
+  };
+
+  if (demoMode) {
+
+    accessCache.unshift({
+      id:
+        "topdata-demo-" +
+        Date.now(),
+      ...accessData
+    });
+
+    renderAccesses();
+
+    return;
+  }
+
+  const {
+    data,
+    error
+  } = await client
+    .from("acessos")
+    .insert(accessData)
+    .select()
+    .single();
+
+  if (error) {
+    console.error(
+      "Erro ao registrar simulação Topdata:",
+      error
+    );
+
+    toast(
+      "Não foi possível registrar o acesso no histórico.",
+      true
+    );
+
+    return;
+  }
+
+  accessCache.unshift(data);
+
+  renderAccesses();
+}
+
+/* =========================================================
+   SIMULAÇÃO TOPDATA - CONSULTA POR MATRÍCULA
+   ========================================================= */
+
+const topdataCheckBtn =
+  document.getElementById("topdataCheckBtn");
+
+if (topdataCheckBtn) {
+  topdataCheckBtn.onclick = async () => {
+
+    const matricula =
+      document.getElementById(
+        "topdataMatricula"
+      )?.value.trim();
+
+    const resultBox =
+      document.getElementById(
+        "topdataResult"
+      );
+
+    if (!matricula) {
+
+      if (resultBox) {
+        resultBox.classList.remove("hidden");
+
+        resultBox.innerHTML = `
+          <strong>⚠️ Matrícula não informada</strong>
+          <p>Digite uma matrícula para verificar o acesso.</p>
+        `;
+      }
+
+      return;
+    }
+
+    const decision =
+      checkAccessByMatricula(
+        matricula
+      );
+    if (decision.aluno) {
+      await registerTopdataAccess(
+        decision.aluno,
+        decision
+      );
+    }
+    if (!resultBox) return;
+
+    resultBox.classList.remove(
+      "hidden"
+    );
+
+    const liberado =
+      decision.resultado ===
+      "liberado";
+
+    resultBox.innerHTML = `
+      <h3>
+        ${liberado
+        ? "🟢 ACESSO LIBERADO"
+        : "🔴 ACESSO BLOQUEADO"
+      }
+      </h3>
+
+      ${decision.aluno
+        ? `
+            <p>
+              <strong>Aluno:</strong>
+              ${decision.aluno.nome || "—"}
+            </p>
+
+            <p>
+              <strong>Matrícula:</strong>
+              ${decision.aluno.matricula || matricula}
+            </p>
+          `
+        : ""
+      }
+
+      <p>
+        <strong>Motivo:</strong>
+        ${decision.motivo}
+      </p>
+    `;
+  };
+}
+
+/* Salvar acesso no Supabase */
+
+async function saveAccess(event) {
+
+  event.preventDefault();
+
+  const alunoId =
+    document.getElementById(
+      "accessStudent"
+    )?.value || null;
+
+  const equipamento =
+    document.getElementById(
+      "accessEquipment"
+    )?.value.trim() ||
+    "Simulação manual";
+
+  const tipo =
+    document.getElementById(
+      "accessType"
+    )?.value || "entrada";
+
+  const resultado =
+    document.getElementById(
+      "accessResult"
+    )?.value || "liberado";
+
+
+  if (!alunoId) {
+
+    return toast(
+      "Selecione um aluno.",
+      true
+    );
+
+  }
+
+
+  if (demoMode) {
+
+    const newAccess = {
+
+      id:
+        "demo-" +
+        Date.now(),
+
+      aluno_id:
+        alunoId,
+
+      equipamento:
+        equipamento,
+
+      tipo:
+        tipo,
+
+      resultado:
+        resultado,
+
+      ocorrido_em:
+        new Date().toISOString()
+
+    };
+
+
+    accessCache.unshift(
+      newAccess
+    );
+
+
+    renderAccesses();
+
+    document
+      .getElementById(
+        "accessModal"
+      )
+      ?.classList.add(
+        "hidden"
+      );
+
+
+    return toast(
+      "Acesso registrado."
+    );
+
+  }
+
+
+  const {
+    data,
+    error
+  } = await client
+    .from("acessos")
+    .insert({
+
+      aluno_id:
+        alunoId,
+
+      equipamento:
+        equipamento,
+
+      tipo:
+        tipo,
+
+      resultado:
+        resultado,
+
+      ocorrido_em:
+        new Date().toISOString(),
+      origem:
+        "manual",
+    })
+    .select()
+    .single();
+
+
+  if (error) {
+
+    console.error(
+      "Erro ao registrar acesso:",
+      error
+    );
+
+    return toast(
+      error.message,
+      true
+    );
+
+  }
+
+
+  accessCache.unshift(
+    data
+  );
+
+
+  renderAccesses();
+
+
+  document
+    .getElementById(
+      "accessModal"
+    )
+    ?.classList.add(
+      "hidden"
+    );
+
+
+  document
+    .getElementById(
+      "accessForm"
+    )
+    ?.reset();
+
+
+  toast(
+    "Acesso registrado com sucesso."
+  );
+
+}
+const accessForm =
+  document.getElementById(
+    "accessForm"
+  );
+
+if (accessForm) {
+
+  accessForm.addEventListener(
+    "submit",
+    saveAccess
+  );
+
+}
+
+/* Carregar alunos no modal de acesso */
+
+function loadAccessStudents() {
+
+  const select =
+    document.getElementById(
+      "accessStudent"
+    );
+
+  if (!select) return;
+
+
+  select.innerHTML = `
+    <option value="">
+      Selecione o aluno
+    </option>
+  `;
+
+
+  studentsCache
+    .filter(
+      student =>
+        student.status === "ativo"
+    )
+    .sort(
+      (a, b) =>
+        String(
+          a.nome || ""
+        ).localeCompare(
+          String(
+            b.nome || ""
+          ),
+          "pt-BR"
+        )
+    )
+    .forEach(student => {
+
+      const option =
+        document.createElement(
+          "option"
+        );
+
+      option.value =
+        student.id;
+
+      option.textContent =
+        `${student.matricula || "—"} — ${student.nome}`;
+
+      select.appendChild(
+        option
+      );
+
+    });
+
+}
+
+if (closeAccessModal) {
+
+  closeAccessModal.onclick = () => {
+
+    if (accessModal) {
+      accessModal.classList.add(
+        "hidden"
+      );
+    }
+
+  };
+
+}
+
+
+if (cancelAccessModal) {
+
+  cancelAccessModal.onclick = () => {
+
+    if (accessModal) {
+      accessModal.classList.add(
+        "hidden"
+      );
+    }
+
+  };
+
+}
+
+(async () => {
+
+  const {
+    data: {
+      session
+    }
+  } =
+    await client.auth
+      .getSession();
+
+  if (session) {
+
+    showApp(
+      session.user.email
+    );
+  }
+
+})();
+
+/* =========================================================
+   ACESSOS
+   ========================================================= */
+
+let accessCache = [];
+
+/* =========================================================
+   VERSÃO 10 - REGRA AUTOMÁTICA DE ACESSO
+   ========================================================= */
+
+const ACCESS_GRACE_DAYS = 2;
+
+
+/* Verifica se o lançamento está vencido
+   considerando os 2 dias de carência */
+function isFinanceOverdue(finance) {
+
+  if (!finance) {
+    return false;
+  }
+
+  if (finance.status === "pago") {
+    return false;
+  }
+
+  if (!finance.data_vencimento) {
+    return false;
+  }
+
+  const today = new Date();
+
+  today.setHours(
+    0,
+    0,
+    0,
+    0
+  );
+
+  const dueDate =
+    new Date(
+      finance.data_vencimento
+    );
+
+  dueDate.setHours(
+    0,
+    0,
+    0,
+    0
+  );
+
+  const graceLimit =
+    new Date(
+      dueDate
+    );
+
+  graceLimit.setDate(
+    graceLimit.getDate() +
+    ACCESS_GRACE_DAYS
+  );
+
+  return today > graceLimit;
+}
+
+
+/* Decide automaticamente se o aluno
+   pode ou não acessar a academia */
+function getAutomaticAccessDecision(student) {
+
+  if (!student) {
+
+    return {
+      resultado: "bloqueado",
+      motivo: "Aluno não encontrado"
+    };
+
+  }
+
+
+  if (student.status !== "ativo") {
+
+    return {
+      resultado: "bloqueado",
+      motivo: "Aluno inativo"
+    };
+
+  }
+
+
+  const financialCache =
+    window.accessFinancialCache || [];
+
+
+  const records =
+    financialCache
+      .filter(
+        item =>
+          item.aluno_id ===
+          student.id
+      )
+      .filter(
+        item =>
+          item.status !==
+          "cancelado"
+      );
+
+
+  if (!records.length) {
+
+    return {
+      resultado: "bloqueado",
+      motivo:
+        "Sem informação financeira"
+    };
+
+  }
+
+
+  records.sort(
+    (a, b) =>
+      new Date(
+        b.data_vencimento || 0
+      ) -
+      new Date(
+        a.data_vencimento || 0
+      )
+  );
+
+
+  const latest =
+    records[0];
+
+
+  if (latest.status === "pago") {
+
+    return {
+      resultado: "liberado",
+      motivo:
+        "Mensalidade paga"
+    };
+
+  }
+
+
+  if (
+    latest.status === "aberto" ||
+    latest.status === "atrasado"
+  ) {
+
+    if (
+      !isFinanceOverdue(
+        latest
+      )
+    ) {
+
+      return {
+        resultado: "liberado",
+        motivo:
+          "Dentro do período de carência"
+      };
+
+    }
+
+
+    return {
+      resultado: "bloqueado",
+      motivo:
+        "Mensalidade vencida após carência"
+    };
+
+  }
+
+
+  return {
+    resultado: "bloqueado",
+    motivo:
+      "Situação financeira irregular"
+  };
+
+}
+/* =========================================================
+   TOPDATA - PREPARAÇÃO PARA CONSULTA POR MATRÍCULA
+   ========================================================= */
+
+function checkAccessByMatricula(matricula) {
+
+  const normalizedMatricula =
+    String(matricula || "")
+      .trim();
+
+  if (!normalizedMatricula) {
+    return {
+      resultado: "bloqueado",
+      motivo: "Matrícula não informada",
+      aluno: null
+    };
+  }
+
+  const student =
+    studentsCache.find(student =>
+      String(student.matricula || "")
+        .trim() ===
+      normalizedMatricula
+    );
+
+  if (!student) {
+    return {
+      resultado: "bloqueado",
+      motivo: "Matrícula não encontrada",
+      aluno: null
+    };
+  }
+
+  const decision =
+    getAutomaticAccessDecision(
+      student
+    );
+
+  return {
+    resultado:
+      decision.resultado,
+
+    motivo:
+      decision.motivo,
+
+    aluno:
+      student
+  };
+}
+
+/* Carregar acessos */
+async function loadAccesses() {
+
+  if (demoMode) {
+    accessCache = [];
+    renderAccesses();
+    return;
+  }
+
+  const [
+    accesses,
+    financial
+  ] = await Promise.all([
+
+    client
+      .from("acessos")
+      .select(`
+        id,
+        aluno_id,
+        equipamento,
+        tipo,
+        resultado,
+        ocorrido_em
+      `)
+      .order("ocorrido_em", {
+        ascending: false
+      }),
+
+    client
+      .from("financeiro")
+      .select(`
+        id,
+        aluno_id,
+        status,
+        valor,
+        data_vencimento,
+        data_pagamento
+      `)
+      .order("data_vencimento", {
+        ascending: false
+      })
+
+  ]);
+
+
+  if (accesses.error) {
+
+    console.error(
+      "Erro ao carregar acessos:",
+      accesses.error
+    );
+
+    return toast(
+      accesses.error.message,
+      true
+    );
+
+  }
+
+
+  if (financial.error) {
+
+    console.error(
+      "Erro ao carregar financeiro dos acessos:",
+      financial.error
+    );
+
+    return toast(
+      financial.error.message,
+      true
+    );
+
+  }
+
+
+  accessCache = accesses.data || [];
+
+
+  window.accessFinancialCache =
+    financial.data || [];
+
+
+  renderAccesses();
+
+}
+
+
+/* Renderizar tela de Acessos */
+function renderAccesses() {
+
+  const table =
+    document.getElementById(
+      "accessTable"
+    );
+
+  if (!table) return;
+
+
+  const search =
+    (
+      document.getElementById(
+        "accessSearch"
+      )?.value || ""
+    )
+      .toLowerCase();
+
+
+  const statusFilter =
+    document.getElementById(
+      "accessStatus"
+    )?.value || "todos";
+
+
+  const financialCache =
+    window.accessFinancialCache || [];
+
+
+  /*
+    Descobrir o último acesso de cada aluno
+  */
+
+  const latestAccess = {};
+
+
+  accessCache.forEach(access => {
+
+    if (!latestAccess[access.aluno_id]) {
+
+      latestAccess[access.aluno_id] =
+        access;
+
+    }
+
+  });
+
+
+  /*
+    Montar situação financeira
+  */
+
+  function getFinancialStatus(
+    studentId
+  ) {
+
+    const records =
+      financialCache.filter(
+        item =>
+          item.aluno_id === studentId
+      );
+
+
+    if (!records.length) {
+      return "Sem lançamentos";
+    }
+
+
+    if (
+      records.some(
+        item =>
+          item.status === "atrasado"
+      )
+    ) {
+
+      return "Em atraso";
+
+    }
+
+
+    if (
+      records.some(
+        item =>
+          item.status === "aberto"
+      )
+    ) {
+
+      return "Em aberto";
+
+    }
+
+
+    if (
+      records.some(
+        item =>
+          item.status === "pago"
+      )
+    ) {
+
+      return "Em dia";
+
+    }
+
+
+    return "Não verificado";
+
+  }
+
+
+  /*
+    Determinar se o acesso está liberado
+  */
+
+  function getAccessStatus(
+    student,
+    financialStatus
+  ) {
+
+    if (
+      student.status !== "ativo"
+    ) {
+
+      return "Bloqueado";
+
+    }
+
+
+    if (
+      financialStatus === "Em atraso"
+    ) {
+
+      return "Bloqueado";
+
+    }
+
+
+    if (
+      financialStatus === "Em dia"
+    ) {
+
+      return "Liberado";
+
+    }
+
+
+    return "Verificar";
+
+  }
+
+
+  const rows =
+    studentsCache.filter(
+      student => {
+
+        const matchesStatus =
+          statusFilter === "todos" ||
+          student.status ===
+          statusFilter;
+
+
+        const searchText = [
+
+          student.nome,
+
+          student.matricula,
+
+          student.cpf,
+
+          student.telefone
+
+        ]
+          .join(" ")
+          .toLowerCase();
+
+
+        const matchesSearch =
+          searchText.includes(
+            search
+          );
+
+
+        return (
+          matchesStatus &&
+          matchesSearch
+        );
+
+      }
+    );
+
+
+  /*
+    Indicadores
+  */
+
+  const today =
+    new Date()
+      .toISOString()
+      .substring(0, 10);
+
+
+  const accessesToday =
+    accessCache.filter(
+      access =>
+        access.ocorrido_em &&
+        access.ocorrido_em
+          .substring(0, 10) ===
+        today
+    ).length;
+
+
+  const activeStudents =
+    studentsCache.filter(
+      student =>
+        student.status === "ativo"
+    ).length;
+
+
+  let liberated = 0;
+
+  let blocked = 0;
+
+
+  studentsCache.forEach(
+    student => {
+
+      const financialStatus =
+        getFinancialStatus(
+          student.id
+        );
+
+
+      const accessStatus =
+        getAccessStatus(
+          student,
+          financialStatus
+        );
+
+
+      if (
+        accessStatus ===
+        "Liberado"
+      ) {
+
+        liberated++;
+
+      }
+
+
+      if (
+        accessStatus ===
+        "Bloqueado"
+      ) {
+
+        blocked++;
+
+      }
+
+    }
+  );
+
+
+  const totalElement =
+    document.getElementById(
+      "accessTotal"
+    );
+
+  const activeElement =
+    document.getElementById(
+      "accessAlunosAtivos"
+    );
+
+  const liberatedElement =
+    document.getElementById(
+      "accessLiberados"
+    );
+
+  const blockedElement =
+    document.getElementById(
+      "accessBloqueados"
+    );
+
+
+  if (totalElement) {
+
+    totalElement.textContent =
+      accessesToday;
+
+  }
+
+
+  if (activeElement) {
+
+    activeElement.textContent =
+      activeStudents;
+
+  }
+
+
+  if (liberatedElement) {
+
+    liberatedElement.textContent =
+      liberated;
+
+  }
+
+
+  if (blockedElement) {
+
+    blockedElement.textContent =
+      blocked;
+
+  }
+
+
+  /*
+    Tabela
+  */
+
+  table.innerHTML = `
+
+    <table class="table">
+
+      <thead>
+
+        <tr>
+
+          <th>Matrícula</th>
+
+          <th>Aluno</th>
+
+          <th>Status</th>
+
+          <th>Situação financeira</th>
+
+          <th>Último acesso</th>
+
+          <th>Acesso</th>
+
+        </tr>
+
+      </thead>
+
+      <tbody>
+
+        ${rows
+      .map(student => {
+
+        const financialStatus =
+          getFinancialStatus(
+            student.id
+          );
+
+
+        const accessStatus =
+          getAccessStatus(
+            student,
+            financialStatus
+          );
+
+
+        const lastAccess =
+          latestAccess[
+          student.id
+          ];
+
+
+        let lastAccessText =
+          "Nunca";
+
+
+        if (
+          lastAccess &&
+          lastAccess.ocorrido_em
+        ) {
+
+          lastAccessText =
+            new Date(
+              lastAccess.ocorrido_em
+            ).toLocaleString(
+              "pt-BR"
+            );
+
+        }
+
+
+        return `
+
+                <tr>
+
+                  <td>
+                    ${esc(
+          student.matricula ||
+          "—"
+        )}
+                  </td>
+
+                  <td>
+                    <strong>
+                      ${esc(
+          student.nome
+        )}
+                    </strong>
+                  </td>
+
+                  <td>
+
+                    <span
+                      class="status ${student.status
+          }"
+                    >
+                      ${esc(
+            student.status
+          )}
+                    </span>
+
+                  </td>
+
+                  <td>
+                    ${esc(
+            financialStatus
+          )}
+                  </td>
+
+                  <td>
+                    ${esc(
+            lastAccessText
+          )}
+                  </td>
+
+                  <td>
+
+                    <span
+                      class="status ${accessStatus ===
+            "Liberado"
+            ? "ativo"
+            : accessStatus ===
+              "Bloqueado"
+              ? "inativo"
+              : ""
+          }"
+                    >
+                      ${accessStatus}
+                    </span>
+
+                  </td>
+
+                </tr>
+
+              `;
+
+      })
+      .join("")
+    }
+
+        ${rows.length === 0
+      ? `
+              <tr>
+
+                <td colspan="6">
+
+                  Nenhum aluno encontrado.
+
+                </td>
+
+              </tr>
+            `
+      : ""
+    }
+
+      </tbody>
+
+    </table>
+
+  `;
+  /*
+    Histórico de acessos
+  */
+
+  const historyTable =
+    document.getElementById(
+      "accessHistoryTable"
+    );
+
+  if (historyTable) {
+
+    const historySearch =
+      document
+        .getElementById(
+          "accessHistorySearch"
+        )
+        ?.value
+        .trim()
+        .toLowerCase() || "";
+
+    const historyStart =
+      document
+        .getElementById(
+          "accessHistoryStart"
+        )
+        ?.value || "";
+
+    const historyEnd =
+      document
+        .getElementById(
+          "accessHistoryEnd"
+        )
+        ?.value || "";
+
+    const historyType =
+      document
+        .getElementById(
+          "accessHistoryType"
+        )
+        ?.value || "todos";
+
+    const historyResult =
+      document
+        .getElementById(
+          "accessHistoryResult"
+        )
+        ?.value || "todos";
+
+
+    const historyRows =
+      [...accessCache]
+        .sort(
+          (a, b) =>
+            new Date(b.ocorrido_em) -
+            new Date(a.ocorrido_em)
+        )
+        .filter(access => {
+
+          const student =
+            studentsCache.find(
+              student =>
+                student.id ===
+                access.aluno_id
+            );
+
+          const studentName =
+            student?.nome ||
+            "";
+
+          const studentMatricula =
+            String(
+              student?.matricula ||
+              ""
+            );
+
+          const searchMatch =
+            !historySearch ||
+            studentName
+              .toLowerCase()
+              .includes(
+                historySearch
+              ) ||
+            studentMatricula
+              .toLowerCase()
+              .includes(
+                historySearch
+              );
+
+          const accessDate =
+            access.ocorrido_em
+              ? new Date(
+                access.ocorrido_em
+              )
+                .toISOString()
+                .slice(0, 10)
+              : "";
+
+          const startMatch =
+            !historyStart ||
+            (
+              accessDate &&
+              accessDate >=
+              historyStart
+            );
+
+          const endMatch =
+            !historyEnd ||
+            (
+              accessDate &&
+              accessDate <=
+              historyEnd
+            );
+
+          const typeMatch =
+            historyType === "todos" ||
+            access.tipo ===
+            historyType;
+
+          const resultMatch =
+            historyResult === "todos" ||
+            access.resultado ===
+            historyResult;
+
+          return (
+            searchMatch &&
+            startMatch &&
+            endMatch &&
+            typeMatch &&
+            resultMatch
+          );
+
+        })
+        .map(access => {
+
+          const student =
+            studentsCache.find(
+              student =>
+                student.id ===
+                access.aluno_id
+            );
+
+          const studentName =
+            student?.nome ||
+            "Aluno não encontrado";
+
+          const studentMatricula =
+            student?.matricula ||
+            "—";
+
+          const occurredAt =
+            access.ocorrido_em
+              ? new Date(
+                access.ocorrido_em
+              ).toLocaleString(
+                "pt-BR"
+              )
+              : "—";
+
+          const type =
+            access.tipo === "saida"
+              ? "Saída"
+              : "Entrada";
+
+          const result =
+            access.resultado ===
+              "bloqueado"
+              ? "Bloqueado"
+              : "Liberado";
+
+          const resultClass =
+            access.resultado ===
+              "bloqueado"
+              ? "inativo"
+              : "ativo";
+
+          const equipment =
+            access.equipamento ||
+            "—";
+          const origin =
+            access.origem === "topdata_simulacao"
+              ? "Simulação Topdata"
+              : access.origem === "manual"
+                ? "Manual"
+                : "—";
+          return `
+            <tr>
+
+              <td>
+                ${esc(occurredAt)}
+              </td>
+
+              <td>
+                ${esc(
+            studentMatricula
+          )}
+              </td>
+
+              <td>
+                <strong>
+                  ${esc(
+            studentName
+          )}
+                </strong>
+              </td>
+
+              <td>
+                ${esc(type)}
+              </td>
+
+              <td>
+                <span
+                  class="status ${resultClass}"
+                >
+                  ${esc(result)}
+                </span>
+              </td>
+
+              <td>
+  ${esc(equipment)}
+</td>
+<td>
+  ${esc(origin)}
+</td>
+
+            </tr>
+          `;
+        })
+        .join("");
+
+    historyTable.innerHTML = `
+      <table class="table">
+
+        <thead>
+          <tr>
+            <th>Data/Hora</th>
+            <th>Matrícula</th>
+            <th>Aluno</th>
+            <th>Tipo</th>
+            <th>Resultado</th>
+<th>Equipamento</th>
+<th>Origem</th>
+          </tr>
+        </thead>
+
+        <tbody>
+
+  ${historyRows ||
+      `
+      <tr>
+        <td colspan="6">
+          Nenhum acesso encontrado para os filtros selecionados.
+        </td>
+      </tr>
+    `
+      }
+
+</tbody>
+
+        </tbody>
+
+      </table>
+    `;
+  }
+}
+
+
+/* Filtros do Acessos */
+
+document
+  .getElementById("accessSearch")
+  ?.addEventListener(
+    "input",
+    renderAccesses
+  );
+
+
+document
+  .getElementById("accessStatus")
+  ?.addEventListener(
+    "change",
+    renderAccesses
+  );
+
+/* =========================================================
+   FILTROS DO HISTÓRICO DE ACESSOS
+   ========================================================= */
+
+document
+  .getElementById("accessHistorySearch")
+  ?.addEventListener(
+    "input",
+    renderAccesses
+  );
+
+document
+  .getElementById("accessHistoryStart")
+  ?.addEventListener(
+    "change",
+    renderAccesses
+  );
+
+document
+  .getElementById("accessHistoryEnd")
+  ?.addEventListener(
+    "change",
+    renderAccesses
+  );
+
+document
+  .getElementById("accessHistoryType")
+  ?.addEventListener(
+    "change",
+    renderAccesses
+  );
+
+document
+  .getElementById("accessHistoryResult")
+  ?.addEventListener(
+    "change",
+    renderAccesses
+  );
+
+/* =========================================================
+   FINANCEIRO - CONTROLE DE LANÇAMENTOS
+   ========================================================= */
+
+let financeCache = [];
+
+let financeRevenueChart = null;
+let financeStatusChart = null;
+let financePaymentChart = null;
+
+/* Abrir modal de novo lançamento */
+
+function openFinanceModal() {
+
+  const modal = document.getElementById("financeModal");
+
+  if (!modal) return;
+
+  document.getElementById("financeForm")?.reset();
+
+  const id = document.getElementById("financeId");
+
+  if (id) id.value = "";
+
+  loadFinanceStudents();
+
+  modal.classList.remove("hidden");
+}
+
+
+/* Fechar modal financeiro */
+function closeFinanceModal() {
+
+  const modal = document.getElementById("financeModal");
+
+  if (!modal) return;
+
+  modal.classList.add("hidden");
+
+  document.getElementById("financeForm")?.reset();
+}
+
+
+/* Carregar alunos no campo de seleção */
+
+async function loadFinanceStudents() {
+
+  const select =
+    document.getElementById("financeStudent");
+
+  if (!select) return;
+
+  select.innerHTML = `
+    <option value="">
+      Selecione o aluno
+    </option>
+  `;
+
+  let planos = [];
+
+  if (demoMode) {
+
+    planos = [
+      {
+        nome: "Mensal",
+        valor: 70
+      },
+      {
+        nome: "Trimestral",
+        valor: 180
+      },
+      {
+        nome: "Semestral",
+        valor: 350
+      },
+      {
+        nome: "Anual",
+        valor: 700
+      }
+    ];
+
+  } else {
+
+    const result =
+      await client
+        .from("planos")
+        .select("id, nome, valor")
+        .eq("ativo", true)
+        .order("valor", {
+          ascending: true
+        });
+
+    if (result.error) {
+
+      console.error(
+        "Erro ao carregar planos:",
+        result.error
+      );
+
+      return;
+    }
+
+    planos = result.data || [];
+  }
+
+  studentsCache
+    .filter(
+      student =>
+        String(student.status || "").toLowerCase() ===
+        "ativo"
+    )
+    .sort((a, b) =>
+      String(a.nome || "").localeCompare(
+        String(b.nome || ""),
+        "pt-BR"
+      )
+    )
+    .forEach(student => {
+
+      const option =
+        document.createElement("option");
+
+      option.value = student.id;
+
+      option.textContent =
+        student.nome +
+        (
+          student.cpf
+            ? ` — ${student.cpf}`
+            : ""
+        );
+
+      const plano =
+        planos.find(
+          item =>
+            String(item.id) ===
+            String(student.plano_id)
+        );
+
+      if (plano) {
+
+        option.dataset.planoId =
+          plano.id;
+
+        option.dataset.planoNome =
+          plano.nome;
+
+        option.dataset.planoValor =
+          plano.valor;
+
+      }
+
+      select.appendChild(option);
+
+    });
+}
+
+/* Inicializar eventos do Financeiro */
+function initFinanceEvents() {
+
+  const newFinanceBtn =
+    document.getElementById("newFinanceBtn");
+
+  const closeFinanceBtn =
+    document.getElementById("closeFinanceModal");
+
+  const cancelFinanceBtn =
+    document.getElementById("cancelFinanceModal");
+
+  const financeForm =
+    document.getElementById("financeForm");
+
+
+  if (newFinanceBtn) {
+
+    newFinanceBtn.onclick = openFinanceModal;
+
+  }
+
+
+  if (closeFinanceBtn) {
+
+    closeFinanceBtn.onclick = closeFinanceModal;
+
+  }
+
+
+  if (cancelFinanceBtn) {
+
+    cancelFinanceBtn.onclick = closeFinanceModal;
+
+  }
+
+
+  if (financeForm) {
+
+    financeForm.addEventListener(
+      "submit",
+      saveFinance
+    );
+
+  }
+
+}
+
+
+/* Salvar lançamento */
+async function saveFinance(event) {
+
+  event.preventDefault();
+
+  const alunoId =
+    document.getElementById("financeStudent")?.value || null;
+
+  const tipo =
+    document.getElementById("financeTipo")?.value || "mensalidade";
+
+  const status =
+    document.getElementById("financeStatusForm")?.value || "aberto";
+
+  const descricao =
+    document.getElementById("financeDescricao")?.value.trim() || null;
+
+  const valor =
+    Number(
+      document.getElementById("financeValor")?.value || 0
+    );
+
+  const vencimento =
+    document.getElementById("financeVencimento")?.value || null;
+
+  const pagamento =
+    document.getElementById("financePagamento")?.value || null;
+
+  const formaPagamento =
+    document.getElementById("financeFormaPagamento")?.value || null;
+
+  const observacoes =
+    document.getElementById("financeObservacoes")?.value.trim() || null;
+
+
+  if (!alunoId) {
+
+    return toast(
+      "Selecione o aluno.",
+      true
+    );
+
+  }
+
+
+  if (!valor || valor <= 0) {
+
+    return toast(
+      "Informe um valor válido.",
+      true
+    );
+
+  }
+
+
+  const payload = {
+
+    aluno_id: alunoId,
+
+    tipo,
+
+    status,
+
+    descricao,
+
+    valor,
+
+    data_vencimento: vencimento,
+
+    data_pagamento: pagamento,
+
+    forma_pagamento: formaPagamento,
+
+    observacoes
+
+  };
+
+
+  /* MODO DEMONSTRAÇÃO */
+
+  if (demoMode) {
+    financeCache.unshift({
+      id: crypto.randomUUID(),
+      ...payload,
+      criado_em: new Date().toISOString()
+    });
+
+    localStorage.setItem(
+      "thm_demo_financeiro",
+      JSON.stringify(financeCache)
+    );
+
+    closeFinanceModal();
+    renderFinance();
+
+    return toast(
+      "Lançamento salvo na demonstração."
+    );
+  }
+
+  /* SUPABASE */
+
+  const financeId =
+    document.getElementById("financeId")?.value || "";
+
+  let result;
+
+  if (financeId) {
+
+    result =
+      await client
+        .from("financeiro")
+        .update(payload)
+        .eq("id", financeId)
+        .select()
+        .single();
+
+  } else {
+
+    result =
+      await client
+        .from("financeiro")
+        .insert(payload)
+        .select()
+        .single();
+
+  }
+
+
+  if (result.error) {
+    return toast(
+      result.error.message,
+      true
+    );
+  }
+
+  await loadAll();
+
+  toast(
+    "Novo cadastro criado."
+  );
+
+}
+
+
+/* Carregar financeiro */
+async function loadFinance() {
+
+  if (demoMode) {
+
+    financeCache =
+      JSON.parse(
+        localStorage.getItem(
+          "thm_demo_financeiro"
+        ) || "[]"
+      );
+
+    window.accessFinancialCache =
+      financeCache;
+
+    renderFinance();
+    renderFinanceCharts();
+    return;
+
+  }
+
+
+  const result =
+    await client
+      .from("financeiro")
+      .select("*")
+      .order(
+        "data_vencimento",
+        {
+          ascending: false
+        }
+      );
+
+
+  if (result.error) {
+
+    console.error(
+      "Erro ao carregar financeiro:",
+      result.error
+    );
+
+    return;
+
+  }
+
+
+  financeCache =
+    result.data || [];
+
+  window.accessFinancialCache =
+    financeCache;
+
+  renderFinance();
+  renderFinanceCharts();
+}
+
+
+/* Renderizar financeiro */
+function renderFinance() {
+
+  const table =
+    document.getElementById("financeTable");
+
+  if (!table) return;
+
+
+  let totalRecebido = 0;
+
+  let totalAberto = 0;
+
+  let totalAtrasado = 0;
+
+
+  financeCache.forEach(item => {
+
+    const valor =
+      Number(item.valor || 0);
+
+    if (item.status === "pago") {
+
+      totalRecebido += valor;
+
+    }
+
+    if (item.status === "aberto") {
+
+      totalAberto += valor;
+
+    }
+
+    if (item.status === "atrasado") {
+
+      totalAtrasado += valor;
+
+    }
+
+  });
+
+
+  const total =
+    document.getElementById("financeTotal");
+
+  const lancamentos =
+    document.getElementById("financeLancamentos");
+
+  const aberto =
+    document.getElementById("financeAberto");
+
+  const atrasado =
+    document.getElementById("financeAtrasado");
+
+
+  if (total) {
+
+    total.textContent =
+      formatMoney(totalRecebido);
+
+  }
+
+
+  if (lancamentos) {
+
+    lancamentos.textContent =
+      financeCache.length;
+
+  }
+
+
+  if (aberto) {
+
+    aberto.textContent =
+      formatMoney(totalAberto);
+
+  }
+
+
+  if (atrasado) {
+
+    atrasado.textContent =
+      formatMoney(totalAtrasado);
+
+  }
+
+
+  const search =
+    (
+      document.getElementById("financeSearch")
+        ?.value || ""
+    )
+      .toLowerCase();
+
+
+  const statusFilter =
+    document.getElementById("financeStatus")
+      ?.value || "todos";
+
+
+  const rows =
+    financeCache.filter(item => {
+
+      const text =
+        [
+          item.descricao,
+          item.tipo,
+          item.status
+        ]
+          .join(" ")
+          .toLowerCase();
+
+
+      const matchSearch =
+        !search ||
+        text.includes(search);
+
+
+      const matchStatus =
+        statusFilter === "todos" ||
+        item.status === statusFilter;
+
+
+      return (
+        matchSearch &&
+        matchStatus
+      );
+
+    });
+
+
+  if (!rows.length) {
+
+    table.innerHTML = `
+      <table class="table">
+
+        <thead>
+
+          <tr>
+            <th>Aluno</th>
+            <th>Descrição</th>
+            <th>Vencimento</th>
+            <th>Valor</th>
+            <th>Status</th>
+            <th>Pagamento</th>
+            <th>Ações</th>
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+          <tr>
+
+            <td colspan="7">
+              Nenhum lançamento cadastrado.
+            </td>
+
+          </tr>
+
+        </tbody>
+
+      </table>
+    `;
+
+    return;
+
+  }
+
+
+  table.innerHTML = `
+
+    <table class="table">
+
+      <thead>
+
+        <tr>
+          <th>Aluno</th>
+          <th>Descrição</th>
+          <th>Vencimento</th>
+          <th>Valor</th>
+          <th>Status</th>
+          <th>Pagamento</th>
+          <th>Ações</th>
+        </tr>
+
+      </thead>
+
+      <tbody>
+
+        ${rows.map(item => {
+
+    const student =
+      studentsCache.find(
+        student =>
+          String(student.id) ===
+          String(item.aluno_id)
+      );
+
+
+    const studentName =
+      student?.nome ||
+      "Aluno não encontrado";
+
+
+    return `
+
+            <tr>
+
+              <td>
+                <strong>
+                  ${esc(studentName)}
+                </strong>
+              </td>
+
+              <td>
+                ${esc(item.descricao || item.tipo || "—")}
+              </td>
+
+              <td>
+                ${formatDate(item.data_vencimento)}
+              </td>
+
+              <td>
+                ${formatMoney(item.valor)}
+              </td>
+
+              <td>
+                <span class="status ${esc(item.status)}">
+                  ${esc(item.status || "—")}
+                </span>
+              </td>
+
+              <td>
+                ${formatDate(item.data_pagamento)}
+              </td>
+
+              <td>
+                <button
+  class="mini"
+  type="button"
+  onclick="editFinance('${item.id}')"
+>
+  Editar
+</button>
+
+<button
+  class="mini"
+  type="button"
+  onclick="deleteFinance('${item.id}')"
+>
+  Excluir
+</button>
+              </td>
+
+            </tr>
+
+          `;
+
+  }).join("")}
+
+      </tbody>
+
+    </table>
+
+  `;
+
+}
+
+
+/* Formatação monetária */
+function formatMoney(value) {
+
+  return Number(value || 0).toLocaleString(
+    "pt-BR",
+    {
+      style: "currency",
+      currency: "BRL"
+    }
+  );
+
+}
+
+
+/* Formatação de data */
+function formatDate(value) {
+
+  if (!value) return "—";
+
+  const date =
+    new Date(value + "T00:00:00");
+
+  if (Number.isNaN(date.getTime())) {
+
+    return "—";
+
+  }
+
+  return date.toLocaleDateString(
+    "pt-BR"
+  );
+
+}
+
+
+/* Excluir lançamento */
+async function deleteFinance(id) {
+
+  if (
+    !confirm(
+      "Deseja realmente excluir este lançamento?"
+    )
+  ) {
+
+    return;
+
+  }
+
+
+  if (demoMode) {
+
+    financeCache =
+      financeCache.filter(
+        item => item.id !== id
+      );
+
+    localStorage.setItem(
+      "thm_demo_financeiro",
+      JSON.stringify(financeCache)
+    );
+
+    renderFinance();
+
+    return toast(
+      "Lançamento excluído."
+    );
+
+  }
+
+
+  const result =
+    await client
+      .from("financeiro")
+      .delete()
+      .eq("id", id);
+
+
+  if (result.error) {
+
+    return toast(
+      result.error.message,
+      true
+    );
+
+  }
+
+
+  await loadFinance();
+
+  toast(
+    "Lançamento excluído."
+  );
+
+}
+/* Editar lançamento */
+function editFinance(id) {
+
+  const item =
+    financeCache.find(
+      finance =>
+        String(finance.id) === String(id)
+    );
+
+  if (!item) {
+
+    return toast(
+      "Lançamento não encontrado.",
+      true
+    );
+
+  }
+
+  const modal =
+    document.getElementById("financeModal");
+
+  if (!modal) return;
+
+  document.getElementById("financeId").value =
+    item.id || "";
+
+  document.getElementById("financeStudent").value =
+    item.aluno_id || "";
+
+  document.getElementById("financeTipo").value =
+    item.tipo || "mensalidade";
+
+  document.getElementById("financeStatusForm").value =
+    item.status || "aberto";
+
+  document.getElementById("financeDescricao").value =
+    item.descricao || "";
+
+  document.getElementById("financeValor").value =
+    item.valor || "";
+
+  document.getElementById("financeVencimento").value =
+    item.data_vencimento || "";
+
+  document.getElementById("financePagamento").value =
+    item.data_pagamento || "";
+
+  document.getElementById("financeFormaPagamento").value =
+    item.forma_pagamento || "";
+
+  document.getElementById("financeObservacoes").value =
+    item.observacoes || "";
+
+  const title =
+    document.querySelector(
+      "#financeModal h2"
+    );
+
+  if (title) {
+
+    title.textContent =
+      "Editar lançamento";
+
+  }
+
+  loadFinanceStudents();
+
+  document.getElementById("financeStudent").value =
+    item.aluno_id || "";
+
+  modal.classList.remove("hidden");
+
+}
+
+// Mostrar plano atual e preencher descrição
+
+document
+  .getElementById("financeStudent")
+  ?.addEventListener(
+    "change",
+    event => {
+
+      const planElement =
+        document.getElementById(
+          "financeStudentPlan"
+        );
+
+      const descriptionElement =
+        document.getElementById(
+          "financeDescricao"
+        );
+
+      const valueElement =
+        document.getElementById(
+          "financeValor"
+        );
+
+      if (!planElement) return;
+
+      const selectedOption =
+        event.target.options[
+        event.target.selectedIndex
+        ];
+
+      if (
+        !selectedOption ||
+        !selectedOption.value
+      ) {
+
+        planElement.textContent = "";
+
+        if (descriptionElement) {
+          descriptionElement.value = "";
+        }
+
+        if (valueElement) {
+          valueElement.value = "";
+        }
+
+        return;
+      }
+
+      const student =
+        studentsCache.find(
+          item =>
+            String(item.id) ===
+            String(event.target.value)
+        );
+
+      if (!student) {
+
+        planElement.textContent =
+          "Aluno não encontrado.";
+
+        return;
+      }
+
+      const planoNome =
+        selectedOption.dataset.planoNome || "";
+
+      const planoValor =
+        Number(
+          selectedOption.dataset.planoValor || 0
+        );
+
+      if (planoNome) {
+
+        planElement.textContent =
+          `Plano atual: ${planoNome}`;
+
+        if (descriptionElement) {
+
+          descriptionElement.value =
+            `Mensalidade — ${planoNome}`;
+        }
+
+        if (valueElement) {
+
+          valueElement.value =
+            planoValor.toFixed(2);
+        }
+
+      } else {
+
+        planElement.textContent =
+          "Plano não informado";
+
+        if (descriptionElement) {
+          descriptionElement.value = "";
+        }
+
+        if (valueElement) {
+          valueElement.value = "";
+        }
+      }
+    }
+  );
+/* Filtros */
+document
+  .getElementById("financeSearch")
+  ?.addEventListener(
+    "input",
+    renderFinance
+  );
+
+
+document
+  .getElementById("financeStatus")
+  ?.addEventListener(
+    "change",
+    renderFinance
+  );
+
+/* =========================================================
+   COMERCIAL - LEADS
+   ========================================================= */
+
+let leadsCache = [];
+let editingLeadId = null;
+
+async function loadLeads() {
+
+  if (demoMode) {
+    leadsCache = [];
+    renderLeads();
+    return;
+  }
+
+  const { data, error } = await client
+    .from("leads")
+    .select("*")
+    .order("created_at", {
+      ascending: false
+    });
+
+  if (error) {
+    console.error("Erro ao carregar leads:", error);
+    return;
+  }
+
+  leadsCache = data || [];
+
+  renderLeads();
+}
+
+function renderLeads() {
+  const tbody = document.getElementById("commercialTableBody");
+  if (!tbody) return;
+
+  const search =
+    (
+      document.getElementById("commercialSearch")?.value || ""
+    )
+      .toLowerCase()
+      .trim();
+
+  const status =
+    document.getElementById("commercialStatusFilter")?.value || "";
+
+  const filtered = leadsCache.filter(lead => {
+    const matchesSearch =
+      !search ||
+      String(lead.nome || "")
+        .toLowerCase()
+        .includes(search) ||
+      String(lead.telefone || "")
+        .toLowerCase()
+        .includes(search) ||
+      String(lead.email || "")
+        .toLowerCase()
+        .includes(search);
+
+    const matchesStatus =
+      !status ||
+      lead.status === status;
+
+    return matchesSearch && matchesStatus;
+  });
+
+  if (!filtered.length) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="8" class="empty-row">
+          Nenhum lead cadastrado.
+        </td>
+      </tr>
+    `;
+  } else {
+    tbody.innerHTML = filtered.map(lead => `
+      <tr>
+        <td>${lead.nome || "-"}</td>
+
+        <td>${lead.telefone || "-"}</td>
+
+        <td>${lead.objetivo || "-"}</td>
+
+        <td>${lead.plano_interesse || "-"}</td>
+
+        <td>${lead.status || "-"}</td>
+
+        <td>${lead.origem || "-"}</td>
+
+        <td>
+          ${lead.data_contato
+        ? new Date(
+          lead.data_contato + "T00:00:00"
+        ).toLocaleDateString("pt-BR")
+        : "-"
+      }
+        </td>
+
+        <td>
+          <button
+            type="button"
+            onclick="editLead('${lead.id}')"
+          >
+            Editar
+          </button>
+
+          <button
+            type="button"
+            onclick="deleteLead('${lead.id}')"
+          >
+            Excluir
+          </button>
+        </td>
+      </tr>
+    `).join("");
+  }
+
+  updateLeadStats();
+}
+
+
+function updateLeadStats() {
+
+  const total =
+    leadsCache.length;
+
+  const novos =
+    leadsCache.filter(
+      lead => lead.status === "Novo"
+    ).length;
+
+  const interessados =
+    leadsCache.filter(
+      lead => lead.status === "Interessado"
+    ).length;
+
+  const matriculados =
+    leadsCache.filter(
+      lead => lead.status === "Matriculado"
+    ).length;
+
+
+  const totalEl =
+    document.getElementById("leadTotal");
+
+  const novosEl =
+    document.getElementById("leadNovos");
+
+  const interessadosEl =
+    document.getElementById("leadInteressados");
+
+  const matriculadosEl =
+    document.getElementById("leadMatriculados");
+
+
+  if (totalEl)
+    totalEl.textContent = total;
+
+  if (novosEl)
+    novosEl.textContent = novos;
+
+  if (interessadosEl)
+    interessadosEl.textContent = interessados;
+
+  if (matriculadosEl)
+    matriculadosEl.textContent = matriculados;
+}
+
+
+async function saveLead() {
+
+  const lead = {
+
+    nome:
+      document.getElementById("leadNome")
+        ?.value.trim(),
+
+    telefone:
+      document.getElementById("leadTelefone")
+        ?.value.trim() || null,
+
+    email:
+      document.getElementById("leadEmail")
+        ?.value.trim() || null,
+
+    objetivo:
+      document.getElementById("leadObjetivo")
+        ?.value || null,
+
+    plano_interesse:
+      document.getElementById("leadPlano")
+        ?.value || null,
+
+    status:
+      document.getElementById("leadStatus")
+        ?.value || "Novo",
+
+    origem:
+      document.getElementById("leadOrigem")
+        ?.value.trim() || null,
+
+    data_contato:
+      document.getElementById("leadDataContato")
+        ?.value || null,
+
+    observacoes:
+      document.getElementById("leadObservacoes")
+        ?.value.trim() || null
+  };
+
+
+  if (!lead.nome) {
+
+    alert("Informe o nome do lead.");
+
+    return;
+  }
+
+
+  if (demoMode) {
+
+    alert(
+      "O cadastro de leads no modo demonstração será implementado posteriormente."
+    );
+
+    return;
+  }
+
+
+  let result;
+
+
+  if (editingLeadId) {
+
+    result =
+      await client
+        .from("leads")
+        .update(lead)
+        .eq("id", editingLeadId);
+
+  } else {
+
+    result =
+      await client
+        .from("leads")
+        .insert([lead]);
+  }
+
+
+  if (result.error) {
+
+    console.error(
+      "Erro ao salvar lead:",
+      result.error
+    );
+
+    alert(
+      "Não foi possível salvar o lead."
+    );
+
+    return;
+  }
+
+
+  editingLeadId = null;
+
+  closeLeadModal();
+
+  await loadLeads();
+}
+
+
+function editLead(id) {
+
+  const lead =
+    leadsCache.find(
+      item => item.id === id
+    );
+
+  if (!lead) return;
+
+  editingLeadId = id;
+
+
+  document.getElementById("leadNome").value =
+    lead.nome || "";
+
+  document.getElementById("leadTelefone").value =
+    lead.telefone || "";
+
+  document.getElementById("leadEmail").value =
+    lead.email || "";
+
+  document.getElementById("leadObjetivo").value =
+    lead.objetivo || "";
+
+  document.getElementById("leadPlano").value =
+    lead.plano_interesse || "";
+
+  document.getElementById("leadStatus").value =
+    lead.status || "Novo";
+
+  document.getElementById("leadOrigem").value =
+    lead.origem || "";
+
+  document.getElementById("leadDataContato").value =
+    lead.data_contato || "";
+
+  document.getElementById("leadObservacoes").value =
+    lead.observacoes || "";
+
+
+  const modal =
+    document.getElementById("leadModal");
+
+  if (modal) {
+    modal.classList.remove("hidden");
+  }
+
+
+  const title =
+    document.getElementById("leadModalTitle");
+
+  if (title) {
+    title.textContent = "Editar Lead";
+  }
+}
+
+
+async function deleteLead(id) {
+
+  if (
+    !confirm(
+      "Deseja realmente excluir este lead?"
+    )
+  ) {
+    return;
+  }
+
+
+  if (demoMode) return;
+
+
+  const { error } =
+    await client
+      .from("leads")
+      .delete()
+      .eq("id", id);
+
+
+  if (error) {
+
+    console.error(
+      "Erro ao excluir lead:",
+      error
+    );
+
+    alert(
+      "Não foi possível excluir o lead."
+    );
+
+    return;
+  }
+
+
+  await loadLeads();
+}
+
+
+function closeLeadModal() {
+
+  const modal =
+    document.getElementById("leadModal");
+
+  if (modal) {
+    modal.classList.add("hidden");
+  }
+
+  editingLeadId = null;
+
+  const title =
+    document.getElementById("leadModalTitle");
+
+  if (title) {
+    title.textContent = "Novo Lead";
+  }
+}
+
+
+function initCommercialEvents() {
+
+  const newLeadBtn =
+    document.getElementById("newLeadBtn");
+
+  const cancelLeadBtn =
+    document.getElementById("cancelLeadBtn");
+
+  const closeLeadModalBtn =
+    document.getElementById("closeLeadModalBtn");
+
+  const leadSearch =
+    document.getElementById("leadSearch");
+
+  const leadStatusFilter =
+    document.getElementById("leadStatusFilter");
+
+  const leadForm =
+    document.getElementById("leadForm");
+
+
+  if (newLeadBtn) {
+
+    newLeadBtn.onclick = () => {
+
+      editingLeadId = null;
+
+      if (leadForm) {
+        leadForm.reset();
+      }
+
+      const title =
+        document.getElementById("leadModalTitle");
+
+      if (title) {
+        title.textContent = "Novo Lead";
+      }
+
+      const modal =
+        document.getElementById("leadModal");
+
+      if (modal) {
+        modal.classList.remove("hidden");
+      }
+    };
+  }
+
+
+  if (cancelLeadBtn) {
+    cancelLeadBtn.onclick =
+      closeLeadModal;
+  }
+
+
+  if (closeLeadModalBtn) {
+    closeLeadModalBtn.onclick =
+      closeLeadModal;
+  }
+
+
+  if (leadSearch) {
+
+    leadSearch.addEventListener(
+      "input",
+      renderLeads
+    );
+  }
+
+
+  if (leadStatusFilter) {
+
+    leadStatusFilter.addEventListener(
+      "change",
+      renderLeads
+    );
+  }
+
+
+  if (leadForm) {
+
+    leadForm.addEventListener(
+      "submit",
+      async event => {
+
+        event.preventDefault();
+
+        await saveLead();
+      }
+    );
+  }
+}
+
+/* =========================================================
+   TREINOS - CONTROLE DE FICHAS
+   ========================================================= */
+
+let workoutCache = [];
+
+/* =========================================================
+   AVALIAÇÕES - CONTROLE
+   ========================================================= */
+
+let evaluationCache = [];
+
+/* =========================================================
+   CARREGAR AVALIAÇÕES
+   ========================================================= */
+async function loadEvaluations() {
+  if (demoMode) {
+    evaluationCache = JSON.parse(
+      localStorage.getItem(
+        "thm_demo_avaliacoes"
+      ) || "[]"
+    );
+
+    renderEvaluations();
+    return;
+  }
+
+  const { data, error } = await supabaseClient
+    .from("avaliacoes")
+    .select(`
+      *,
+      medidas_corporais (*)
+    `)
+    .order(
+      "avaliado_em",
+      {
+        ascending: false
+      }
+    );
+
+  if (error) {
+    console.error(
+      "Erro ao carregar avaliações:",
+      error
+    );
+
+    toast(
+      "Erro ao carregar avaliações.",
+      true
+    );
+
+    return;
+  }
+
+  evaluationCache = data || [];
+
+  renderEvaluations();
+}
+
+/* =========================================================
+   RENDERIZAR AVALIAÇÕES
+   ========================================================= */
+
+function renderEvaluations() {
+
+  const tbody =
+    $("evaluationTableBody");
+
+  if (!tbody) return;
+
+
+  const search =
+    (
+      $("evaluationSearch")
+        ?.value || ""
+    )
+      .trim()
+      .toLowerCase();
+
+
+  const studentsById = {};
+
+
+  studentsCache.forEach(
+    student => {
+
+      studentsById[
+        String(student.id)
+      ] = student;
+
+    }
+  );
+
+
+  const rows =
+    evaluationCache.filter(
+      evaluation => {
+
+        const student =
+          studentsById[
+          String(
+            evaluation.aluno_id
+          )
+          ];
+
+
+        const studentName =
+          student?.nome || "";
+
+
+        return (
+          !search ||
+          studentName
+            .toLowerCase()
+            .includes(search)
+        );
+
+      }
+    );
+
+
+  if (!rows.length) {
+
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7">
+          Nenhuma avaliação cadastrada.
+        </td>
+      </tr>
+    `;
+
+    updateEvaluationStats();
+
+    return;
+  }
+
+
+  tbody.innerHTML =
+    rows
+      .map(
+        evaluation => {
+
+          const student =
+            studentsById[
+            String(
+              evaluation.aluno_id
+            )
+            ];
+
+
+          const studentName =
+            student?.nome ||
+            "Aluno não encontrado";
+
+
+          const date =
+            evaluation.data_avaliacao
+              ? new Date(
+                evaluation.data_avaliacao +
+                "T00:00:00"
+              ).toLocaleDateString(
+                "pt-BR"
+              )
+              : "—";
+
+
+          const weight =
+            evaluation.peso != null
+              ? `${evaluation.peso} kg`
+              : "—";
+
+
+          const bodyFat =
+            evaluation.gordura_corporal != null
+              ? `${evaluation.gordura_corporal}%`
+              : "—";
+
+
+          const muscle =
+            evaluation.massa_muscular != null
+              ? `${evaluation.massa_muscular} kg`
+              : "—";
+
+
+          const bmi =
+            evaluation.imc != null
+              ? evaluation.imc
+              : "—";
+
+
+          return `
+            <tr>
+
+              <td>
+                <strong>
+                  ${esc(studentName)}
+                </strong>
+              </td>
+
+              <td>
+                ${date}
+              </td>
+
+              <td>
+                ${weight}
+              </td>
+
+              <td>
+                ${bodyFat}
+              </td>
+
+              <td>
+                ${muscle}
+              </td>
+
+              <td>
+                ${bmi}
+              </td>
+
+              <td>
+
+                <div
+                  style="
+                    display:flex;
+                    gap:6px;
+                    flex-wrap:wrap;
+                  "
+                >
+
+                  <button
+                    type="button"
+                    class="secondary"
+                    onclick="viewEvaluation('${evaluation.id}')"
+                  >
+                    Ver avaliação
+                  </button>
+
+                  <button
+                    type="button"
+                    class="secondary"
+                    onclick="editEvaluation('${evaluation.id}')"
+                  >
+                    Editar
+                  </button>
+
+                </div>
+
+              </td>
+
+            </tr>
+          `;
+
+        }
+      )
+      .join("");
+
+
+  updateEvaluationStats();
+
+}
+/* =========================================================
+   INDICADORES DE AVALIAÇÕES
+   ========================================================= */
+
+function updateEvaluationStats() {
+
+  const total =
+    $("evaluationStatTotal");
+
+  const students =
+    $("evaluationStatStudents");
+
+  const last =
+    $("evaluationStatLast");
+
+
+  if (total) {
+
+    total.textContent =
+      evaluationCache.length;
+
+  }
+
+
+  if (students) {
+
+    const uniqueStudents =
+      new Set(
+        evaluationCache.map(
+          evaluation =>
+            evaluation.aluno_id
+        )
+      );
+
+    students.textContent =
+      uniqueStudents.size;
+
+  }
+
+
+  if (last) {
+
+    if (!evaluationCache.length) {
+
+      last.textContent = "—";
+
+      return;
+
+    }
+
+
+    const latest =
+      [...evaluationCache]
+        .sort(
+          (a, b) =>
+            new Date(
+              b.data_avaliacao
+            ) -
+            new Date(
+              a.data_avaliacao
+            )
+        )[0];
+
+
+    last.textContent =
+      latest.data_avaliacao
+        ? new Date(
+          latest.data_avaliacao +
+          "T00:00:00"
+        ).toLocaleDateString(
+          "pt-BR"
+        )
+        : "—";
+
+  }
+
+}
+/* =========================================================
+   EVENTOS DE AVALIAÇÕES
+   ========================================================= */
+
+function initEvaluationEvents() {
+
+  $("newEvaluationBtn")
+    ?.addEventListener(
+      "click",
+      openEvaluationModal
+    );
+
+
+  $("cancelEvaluationBtn")
+    ?.addEventListener(
+      "click",
+      closeEvaluationEditor
+    );
+
+
+  $("evaluationSearch")
+    ?.addEventListener(
+      "input",
+      renderEvaluations
+    );
+
+
+  $("evaluationForm")
+    ?.addEventListener(
+      "submit",
+      saveEvaluation
+    );
+
+
+  $("evaluationWeight")
+    ?.addEventListener(
+      "input",
+      calculateEvaluationBmi
+    );
+
+
+  $("evaluationHeight")
+    ?.addEventListener(
+      "input",
+      calculateEvaluationBmi
+    );
+
+}
+
+/* =========================================================
+   NOVA AVALIAÇÃO
+   ========================================================= */
+
+function openEvaluationModal() {
+
+  const editor =
+    $("evaluationEditor");
+
+  const form =
+    $("evaluationForm");
+
+  if (!editor || !form) {
+    return;
+  }
+
+
+  form.reset();
+
+
+  $("evaluationId").value = "";
+
+
+  $("evaluationEditorTitle").textContent =
+    "Nova avaliação";
+
+
+  const today =
+    new Date()
+      .toISOString()
+      .split("T")[0];
+
+
+  $("evaluationDate").value =
+    today;
+
+
+  loadEvaluationStudents();
+
+
+  editor.classList.remove(
+    "hidden"
+  );
+
+
+  editor.scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+
+}
+
+
+/* =========================================================
+   CARREGAR ALUNOS PARA AVALIAÇÃO
+   ========================================================= */
+
+function loadEvaluationStudents() {
+
+  const select =
+    $("evaluationStudent");
+
+  if (!select) return;
+
+
+  select.innerHTML = `
+    <option value="">
+      Selecione o aluno
+    </option>
+  `;
+
+
+  studentsCache
+    .filter(
+      student =>
+        String(
+          student.status || ""
+        ).toLowerCase() ===
+        "ativo"
+    )
+    .sort(
+      (a, b) =>
+        String(a.nome || "")
+          .localeCompare(
+            String(b.nome || ""),
+            "pt-BR"
+          )
+    )
+    .forEach(
+      student => {
+
+        const option =
+          document.createElement(
+            "option"
+          );
+
+
+        option.value =
+          student.id;
+
+
+        option.textContent =
+          student.nome;
+
+
+        select.appendChild(
+          option
+        );
+
+      }
+    );
+
+}
+
+
+/* =========================================================
+   CALCULAR IMC
+   ========================================================= */
+
+function calculateEvaluationBmi() {
+
+  const weight =
+    Number(
+      $("evaluationWeight")
+        ?.value
+    );
+
+
+  const heightCm =
+    Number(
+      $("evaluationHeight")
+        ?.value
+    );
+
+
+  const bmi =
+    $("evaluationBmi");
+
+
+  if (
+    !bmi ||
+    !weight ||
+    !heightCm
+  ) {
+
+    if (bmi) {
+      bmi.value = "";
+    }
+
+    return;
+
+  }
+
+
+  const heightM =
+    heightCm / 100;
+
+
+  if (heightM <= 0) {
+
+    bmi.value = "";
+
+    return;
+
+  }
+
+
+  const result =
+    weight /
+    (
+      heightM *
+      heightM
+    );
+
+
+  bmi.value =
+    result.toFixed(2);
+
+}
+
+
+/* =========================================================
+   FECHAR EDITOR
+   ========================================================= */
+
+function closeEvaluationEditor() {
+
+  const editor =
+    $("evaluationEditor");
+
+  if (!editor) return;
+
+
+  editor.classList.add(
+    "hidden"
+  );
+
+}
+
+
+/* =========================================================
+   SALVAR AVALIAÇÃO
+   ========================================================= */
+async function saveEvaluation(event) {
+  event.preventDefault();
+
+  const alunoId = $("evaluationStudent")?.value;
+  const dataAvaliacao = $("evaluationDate")?.value;
+
+  if (!alunoId) {
+    return toast("Selecione o aluno.", true);
+  }
+
+  if (!dataAvaliacao) {
+    return toast("Informe a data da avaliação.", true);
+  }
+
+  // =========================================
+  // DADOS PRINCIPAIS DA AVALIAÇÃO
+  // =========================================
+
+  const payload = {
+    aluno_id: alunoId,
+
+    avaliado_em: dataAvaliacao,
+
+    peso_kg:
+      Number($("evaluationWeight")?.value) || null,
+
+    gordura_percent:
+      Number($("evaluationBodyFat")?.value) || null,
+
+    massa_muscular_kg:
+      Number($("evaluationMuscleMass")?.value) || null,
+
+    agua_percent:
+      Number($("evaluationWater")?.value) || null,
+
+    gordura_visceral:
+      Number($("evaluationVisceralFat")?.value) || null,
+
+    observacao:
+      $("evaluationNotes")?.value.trim() || null,
+
+    origem: "manual"
+  };
+
+  // =========================================
+  // MEDIDAS CORPORAIS
+  // =========================================
+
+  const medidasPayload = {
+    pescoco:
+      Number($("evaluationNeck")?.value) || null,
+
+    ombros:
+      Number($("evaluationShoulders")?.value) || null,
+
+    peitoral:
+      Number($("evaluationChest")?.value) || null,
+
+    cintura:
+      Number($("evaluationWaist")?.value) || null,
+
+    abdomen:
+      Number($("evaluationAbdomen")?.value) || null,
+
+    quadril:
+      Number($("evaluationHip")?.value) || null,
+
+    braco_direito:
+      Number($("evaluationRightArm")?.value) || null,
+
+    braco_esquerdo:
+      Number($("evaluationLeftArm")?.value) || null,
+
+    antebraco_direito:
+      Number($("evaluationRightForearm")?.value) || null,
+
+    antebraco_esquerdo:
+      Number($("evaluationLeftForearm")?.value) || null,
+
+    coxa_direita:
+      Number($("evaluationRightThigh")?.value) || null,
+
+    coxa_esquerda:
+      Number($("evaluationLeftThigh")?.value) || null,
+
+    panturrilha_direita:
+      Number($("evaluationRightCalf")?.value) || null,
+
+    panturrilha_esquerda:
+      Number($("evaluationLeftCalf")?.value) || null
+  };
+
+  // =========================================
+  // MODO DEMO
+  // =========================================
+
+  if (demoMode) {
+    const currentId = $("evaluationId")?.value;
+
+    if (currentId) {
+      const index = evaluationCache.findIndex(
+        evaluation =>
+          String(evaluation.id) === String(currentId)
+      );
+
+      if (index >= 0) {
+        evaluationCache[index] = {
+          ...evaluationCache[index],
+          ...payload,
+          medidas_corporais: {
+            ...medidasPayload
+          },
+          atualizado_em:
+            new Date().toISOString()
+        };
+      }
+    } else {
+      evaluationCache.unshift({
+        id: crypto.randomUUID(),
+        ...payload,
+        medidas_corporais: {
+          ...medidasPayload
+        },
+        criado_em:
+          new Date().toISOString(),
+        atualizado_em:
+          new Date().toISOString()
+      });
+    }
+
+    localStorage.setItem(
+      "thm_demo_avaliacoes",
+      JSON.stringify(evaluationCache)
+    );
+
+    renderEvaluations();
+    closeEvaluationEditor();
+
+    return toast(
+      "Avaliação salva com sucesso."
+    );
+  }
+
+  // =========================================
+  // SALVAR / ATUALIZAR AVALIAÇÃO
+  // =========================================
+
+  const evaluationId =
+    $("evaluationId")?.value;
+
+  let response;
+
+  if (evaluationId) {
+    response = await supabaseClient
+      .from("avaliacoes")
+      .update(payload)
+      .eq("id", evaluationId);
+  } else {
+    response = await supabaseClient
+      .from("avaliacoes")
+      .insert(payload)
+      .select("id")
+      .single();
+  }
+
+  if (response.error) {
+    console.error(
+      "Erro ao salvar avaliação:",
+      response.error
+    );
+
+    return toast(
+      "Erro ao salvar avaliação.",
+      true
+    );
+  }
+
+  // =========================================
+  // IDENTIFICAR ID DA AVALIAÇÃO
+  // =========================================
+
+  const savedEvaluationId =
+    evaluationId || response.data?.id;
+
+  if (!savedEvaluationId) {
+    console.error(
+      "Não foi possível identificar o ID da avaliação."
+    );
+
+    return toast(
+      "Avaliação salva, mas não foi possível vincular as medidas.",
+      true
+    );
+  }
+
+  // =========================================
+  // SALVAR MEDIDAS CORPORAIS
+  // =========================================
+
+  const medidasResponse =
+    await supabaseClient
+      .from("medidas_corporais")
+      .upsert(
+        {
+          avaliacao_id: savedEvaluationId,
+          ...medidasPayload,
+          atualizado_em:
+            new Date().toISOString()
+        },
+        {
+          onConflict: "avaliacao_id"
+        }
+      );
+
+  if (medidasResponse.error) {
+    console.error(
+      "Erro ao salvar medidas corporais:",
+      medidasResponse.error
+    );
+
+    return toast(
+      "Avaliação salva, mas houve erro nas medidas corporais.",
+      true
+    );
+  }
+
+  // =========================================
+  // FINALIZAÇÃO
+  // =========================================
+
+  await loadEvaluations();
+
+  closeEvaluationEditor();
+
+  toast(
+    evaluationId
+      ? "Avaliação atualizada com sucesso."
+      : "Avaliação salva com sucesso."
+  );
+}
+
+/* =========================================================
+   CARREGAR TREINOS
+   ========================================================= */
+
+async function loadWorkouts() {
+
+  if (demoMode) {
+
+    workoutCache = JSON.parse(
+      localStorage.getItem(
+        "thm_demo_treinos"
+      ) || "[]"
+    );
+
+    renderWorkouts();
+
+    return;
+  }
+
+
+  const {
+    data,
+    error
+  } = await client
+    .from("treinos")
+    .select(`
+      id,
+      aluno_id,
+      nome,
+      objetivo,
+      conteudo,
+      status,
+      gerado_por,
+      criado_em,
+      atualizado_em
+    `)
+    .order(
+      "atualizado_em",
+      {
+        ascending: false
+      }
+    );
+
+
+  if (error) {
+
+    console.error(
+      "Erro ao carregar treinos:",
+      error
+    );
+
+    return toast(
+      "Erro ao carregar treinos.",
+      true
+    );
+  }
+
+
+  workoutCache =
+    data || [];
+
+
+  renderWorkouts();
+}
+
+
+/* =========================================================
+   CARREGAR ALUNOS NO EDITOR
+   ========================================================= */
+
+function loadWorkoutStudents(
+  selectedId = ""
+) {
+
+  const select =
+    $("workoutStudent");
+
+  if (!select) return;
+
+
+  select.innerHTML = `
+    <option value="">
+      Selecione o aluno
+    </option>
+  `;
+
+
+  studentsCache
+    .filter(
+      student =>
+        student.status === "ativo"
+    )
+    .sort(
+      (a, b) =>
+        String(
+          a.nome || ""
+        ).localeCompare(
+          String(
+            b.nome || ""
+          ),
+          "pt-BR"
+        )
+    )
+    .forEach(student => {
+
+      const option =
+        document.createElement(
+          "option"
+        );
+
+
+      option.value =
+        student.id;
+
+
+      option.textContent =
+        `${student.matricula || "—"} — ${student.nome}`;
+
+
+      if (
+        String(student.id) ===
+        String(selectedId)
+      ) {
+
+        option.selected = true;
+
+      }
+
+
+      select.appendChild(
+        option
+      );
+
+    });
+}
+
+
+/* =========================================================
+   NOVA FICHA
+   ========================================================= */
+
+function openWorkoutModal() {
+
+  const editor =
+    $("workoutEditor");
+
+  const form =
+    $("workoutForm");
+
+
+  if (!editor || !form) {
+    return;
+  }
+
+
+  form.reset();
+
+
+  $("workoutId").value = "";
+
+
+  $("workoutEditorTitle").textContent =
+    "Nova ficha de treino";
+
+
+  $("workoutFormStatus").value =
+    "ativo";
+
+  $("workoutGeneratorOptions")
+    ?.classList.remove(
+      "hidden"
+    );
+
+  loadWorkoutStudents();
+
+
+  $("exerciseList").innerHTML = "";
+
+
+  addExerciseRow();
+
+
+  editor.classList.remove(
+    "hidden"
+  );
+
+
+  editor.scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+}
+
+function openWorkoutGenerator() {
+
+  const editor =
+    $("workoutEditor");
+
+  const form =
+    $("workoutForm");
+
+  if (!editor || !form) {
+    return;
+  }
+
+
+  form.reset();
+
+
+  $("workoutId").value = "";
+
+
+  $("workoutEditorTitle").textContent =
+    "✨ Gerar treino assistido";
+
+
+  $("workoutFormStatus").value =
+    "ativo";
+
+
+  $("workoutGeneratorOptions")
+    ?.classList.remove(
+      "hidden"
+    );
+
+
+  loadWorkoutStudents();
+
+
+  $("exerciseList").innerHTML = "";
+
+
+  addExerciseRow();
+
+
+  editor.classList.remove(
+    "hidden"
+  );
+
+
+  editor.scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
+
+}
+
+/* =========================================================
+   CANCELAR EDIÇÃO
+   ========================================================= */
+
+function closeWorkoutEditor() {
+
+  $("workoutEditor")
+    ?.classList.add(
+      "hidden"
+    );
+
+  $("workoutForm")
+    ?.reset();
+
+  $("exerciseList").innerHTML =
+    "";
+}
+
+
+/* =========================================================
+   ADICIONAR EXERCÍCIO
+   ========================================================= */
+
+function addExerciseRow(
+  exercise = {}
+) {
+
+  const list =
+    $("exerciseList");
+
+  if (!list) return;
+
+
+  const row =
+    document.createElement(
+      "div"
+    );
+
+
+  row.className =
+    "exercise-row";
+
+
+  row.innerHTML = `
+
+    <div class="form-grid">
+
+    <label>
+
+  Divisão
+
+  <select class="exercise-division">
+
+    <option value="A">
+      Treino A
+    </option>
+
+    <option value="B">
+      Treino B
+    </option>
+
+    <option value="C">
+      Treino C
+    </option>
+
+    <option value="D">
+      Treino D
+    </option>
+
+    <option value="E">
+      Treino E
+    </option>
+
+  </select>
+
+</label>
+
+      <label>
+
+        Grupo muscular
+
+        <select class="exercise-group">
+
+          <option value="">
+            Selecione
+          </option>
+
+          <option value="Peito">
+            Peito
+          </option>
+
+          <option value="Costas">
+            Costas
+          </option>
+
+          <option value="Ombros">
+            Ombros
+          </option>
+
+          <option value="Bíceps">
+            Bíceps
+          </option>
+
+          <option value="Tríceps">
+            Tríceps
+          </option>
+
+          <option value="Pernas">
+            Pernas
+          </option>
+
+          <option value="Glúteos">
+            Glúteos
+          </option>
+
+          <option value="Abdômen">
+            Abdômen
+          </option>
+
+          <option value="Panturrilhas">
+            Panturrilhas
+          </option>
+
+          <option value="Cardio">
+            Cardio
+          </option>
+
+          <option value="Outro">
+            Outro
+          </option>
+
+        </select>
+
+      </label>
+
+
+      <label>
+
+        Exercício
+
+        <input
+          type="text"
+          class="exercise-name"
+          placeholder="Ex.: Supino reto"
+          value="${esc(
+    exercise.nome || ""
+  )}"
+          required
+        >
+
+      </label>
+
+
+      <label>
+
+        Séries
+
+        <input
+          type="number"
+          class="exercise-series"
+          min="1"
+          value="${esc(
+    exercise.series || ""
+  )}"
+          placeholder="4"
+        >
+
+      </label>
+
+
+      <label>
+
+        Repetições
+
+        <input
+          type="text"
+          class="exercise-reps"
+          value="${esc(
+    exercise.repeticoes || ""
+  )}"
+          placeholder="8-12"
+        >
+
+      </label>
+
+
+      <label>
+
+        Carga
+
+        <input
+          type="text"
+          class="exercise-load"
+          value="${esc(
+    exercise.carga || ""
+  )}"
+          placeholder="Ex.: 30 kg"
+        >
+
+      </label>
+
+
+      <label>
+
+        Descanso
+
+        <input
+          type="text"
+          class="exercise-rest"
+          value="${esc(
+    exercise.descanso || ""
+  )}"
+          placeholder="60s"
+        >
+
+      </label>
+
+
+      <label>
+
+        Observações
+
+        <input
+          type="text"
+          class="exercise-notes"
+          value="${esc(
+    exercise.observacoes || ""
+  )}"
+          placeholder="Observações"
+        >
+
+      </label>
+
+    </div>
+
+
+    <button
+      type="button"
+      class="secondary remove-exercise"
+    >
+      Remover exercício
+    </button>
+
+  `;
+
+
+  list.appendChild(
+    row
+  );
+
+  /* Restaurar divisão
+     quando estiver editando */
+
+  if (exercise.divisao) {
+
+    const division =
+      row.querySelector(
+        ".exercise-division"
+      );
+
+    if (division) {
+
+      division.value =
+        exercise.divisao;
+
+    }
+
+  }
+
+  /* Restaurar grupo muscular
+     quando estiver editando */
+
+  if (exercise.grupo) {
+
+    const group =
+      row.querySelector(
+        ".exercise-group"
+      );
+
+    if (group) {
+
+      group.value =
+        exercise.grupo;
+
+    }
+
+  }
+
+
+  row
+    .querySelector(
+      ".remove-exercise"
+    )
+    .addEventListener(
+      "click",
+      () => {
+
+        row.remove();
+
+      }
+    );
+}
+
+
+/* =========================================================
+   LER EXERCÍCIOS DO FORMULÁRIO
+   ========================================================= */
+
+function getWorkoutExercises() {
+
+  return [
+    ...document.querySelectorAll(
+      "#exerciseList .exercise-row"
+    )
+  ]
+    .map(row => ({
+      grupo:
+        row
+          .querySelector(
+            ".exercise-group"
+          )
+          ?.value
+          .trim() || "",
+
+      divisao:
+        row
+          .querySelector(
+            ".exercise-division"
+          )
+          ?.value
+          .trim() || "A",
+
+      nome:
+        row
+          .querySelector(
+            ".exercise-name"
+          )
+          ?.value
+          .trim() || "",
+
+      series:
+        row
+          .querySelector(
+            ".exercise-series"
+          )
+          ?.value
+          .trim() || "",
+
+      repeticoes:
+        row
+          .querySelector(
+            ".exercise-reps"
+          )
+          ?.value
+          .trim() || "",
+
+      carga:
+        row
+          .querySelector(
+            ".exercise-load"
+          )
+          ?.value
+          .trim() || "",
+
+      descanso:
+        row
+          .querySelector(
+            ".exercise-rest"
+          )
+          ?.value
+          .trim() || "",
+
+      observacoes:
+        row
+          .querySelector(
+            ".exercise-notes"
+          )
+          ?.value
+          .trim() || ""
+
+    }))
+    .filter(
+      exercise =>
+        exercise.nome
+    );
+}
+
+
+/* =========================================================
+   SALVAR FICHA
+   ========================================================= */
+
+async function saveWorkout(
+  event
+) {
+
+  event.preventDefault();
+
+
+  const id =
+    $("workoutId")
+      ?.value
+      .trim();
+
+
+  const alunoId =
+    $("workoutStudent")
+      ?.value;
+
+
+  const nome =
+    $("workoutName")
+      ?.value
+      .trim();
+
+
+  const objetivo =
+    $("workoutGoal")
+      ?.value || null;
+
+
+  const status =
+    $("workoutFormStatus")
+      ?.value || "ativo";
+
+
+  const exercises =
+    getWorkoutExercises();
+
+
+  if (!alunoId) {
+
+    return toast(
+      "Selecione o aluno.",
+      true
+    );
+
+  }
+
+
+  if (!nome) {
+
+    return toast(
+      "Informe o nome da ficha.",
+      true
+    );
+
+  }
+
+
+  if (!exercises.length) {
+
+    return toast(
+      "Adicione pelo menos um exercício.",
+      true
+    );
+
+  }
+
+
+  const conteudo = {
+
+    exercicios:
+      exercises
+
+  };
+
+
+  /* =======================================================
+     MODO DEMONSTRAÇÃO
+     ======================================================= */
+
+  if (demoMode) {
+
+    const now =
+      new Date()
+        .toISOString();
+
+
+    if (id) {
+
+      workoutCache =
+        workoutCache.map(
+          workout =>
+            String(workout.id) ===
+              String(id)
+              ?
+              {
+                ...workout,
+                aluno_id:
+                  alunoId,
+                nome,
+                objetivo,
+                conteudo,
+                status,
+                gerado_por:
+                  "manual",
+                atualizado_em:
+                  now
+              }
+              :
+              workout
+        );
+
+    } else {
+
+      workoutCache = [
+
+        {
+          id:
+            crypto.randomUUID(),
+
+          aluno_id:
+            alunoId,
+
+          nome,
+
+          objetivo,
+
+          conteudo,
+
+          status,
+
+          gerado_por:
+            "manual",
+
+          criado_em:
+            now,
+
+          atualizado_em:
+            now
+
+        },
+
+        ...workoutCache
+
+      ];
+
+    }
+
+
+    localStorage.setItem(
+      "thm_demo_treinos",
+      JSON.stringify(
+        workoutCache
+      )
+    );
+
+
+    closeWorkoutEditor();
+
+    renderWorkouts();
+
+
+    return toast(
+      "Ficha salva com sucesso."
+    );
+  }
+
+
+  /* =======================================================
+     SUPABASE
+     ======================================================= */
+
+  const payload = {
+    aluno_id: alunoId,
+
+    avaliado_em: dataAvaliacao,
+
+    peso_kg:
+      Number($("evaluationWeight")?.value) || null,
+
+    gordura_percent:
+      Number($("evaluationBodyFat")?.value) || null,
+
+    massa_muscular_kg:
+      Number($("evaluationMuscleMass")?.value) || null,
+
+    agua_percent:
+      Number($("evaluationWater")?.value) || null,
+
+    gordura_visceral:
+      Number($("evaluationVisceralFat")?.value) || null,
+
+    observacao:
+      $("evaluationNotes")?.value.trim() || null,
+
+    origem: "manual"
+  };
+
+  /* =========================================================
+     EDITAR FICHA
+     ========================================================= */
+
+  function editWorkout(
+    id
+  ) {
+
+    const workout =
+      workoutCache.find(
+        item =>
+          String(item.id) ===
+          String(id)
+      );
+
+
+    if (!workout) {
+
+      return toast(
+        "Ficha não encontrada.",
+        true
+      );
+
+    }
+
+
+    const editor =
+      $("workoutEditor");
+
+
+    if (!editor) return;
+
+
+    $("workoutId").value =
+      workout.id;
+
+
+    $("workoutEditorTitle").textContent =
+      "Editar ficha de treino";
+
+
+    loadWorkoutStudents(
+      workout.aluno_id
+    );
+
+
+    $("workoutName").value =
+      workout.nome || "";
+
+
+    $("workoutGoal").value =
+      workout.objetivo || "";
+
+
+    $("workoutFormStatus").value =
+      workout.status || "ativo";
+
+
+    $("exerciseList").innerHTML =
+      "";
+
+
+    let exercises = [];
+
+
+    if (
+      workout.conteudo &&
+      Array.isArray(
+        workout.conteudo.exercicios
+      )
+    ) {
+
+      exercises =
+        workout.conteudo.exercicios;
+
+    }
+
+
+    if (exercises.length) {
+
+      exercises.forEach(
+        exercise =>
+          addExerciseRow(
+            exercise
+          )
+      );
+
+    } else {
+
+      addExerciseRow();
+
+    }
+
+
+    editor.classList.remove(
+      "hidden"
+    );
+
+
+    editor.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+  }
+
+  /* =========================================================
+     VISUALIZAR FICHA
+     ========================================================= */
+
+  function viewWorkout(id) {
+
+    const workout =
+      workoutCache.find(
+        item =>
+          String(item.id) ===
+          String(id)
+      );
+
+
+    if (!workout) {
+
+      return toast(
+        "Ficha não encontrada.",
+        true
+      );
+
+    }
+
+
+    const student =
+      studentsCache.find(
+        item =>
+          String(item.id) ===
+          String(workout.aluno_id)
+      );
+
+
+    const exercises =
+      Array.isArray(
+        workout.conteudo?.exercicios
+      )
+        ? workout.conteudo.exercicios
+        : [];
+
+
+    const viewer =
+      $("workoutViewer");
+
+
+    const content =
+      $("workoutViewerContent");
+
+
+    if (!viewer || !content) {
+      return;
+    }
+
+    const divisions = [
+      "A",
+      "B",
+      "C",
+      "D",
+      "E"
+    ];
+
+
+    const exerciseRows =
+      exercises.length
+        ?
+
+        divisions
+          .map(
+            division => {
+
+              const divisionExercises =
+                exercises.filter(
+                  exercise =>
+                    (
+                      exercise.divisao ||
+                      "A"
+                    ) === division
+                );
+
+
+              if (
+                !divisionExercises.length
+              ) {
+                return "";
+              }
+
+
+              return `
+
+              <div
+                style="
+                  margin-top:20px;
+                  margin-bottom:12px;
+                  padding:10px 14px;
+                  border-radius:8px;
+                  font-weight:600;
+                  font-size:16px;
+                "
+              >
+                Treino ${division}
+              </div>
+
+
+              ${divisionExercises
+                  .map(
+                    (exercise, index) => `
+
+                    <div
+                      style="
+                        border:1px solid #e5e7eb;
+                        border-radius:10px;
+                        padding:15px;
+                        margin-bottom:10px;
+                      "
+                    >
+
+                      <div
+                        style="
+                          font-size:16px;
+                          font-weight:600;
+                          margin-bottom:5px;
+                        "
+                      >
+                        ${index + 1}.
+                        ${esc(
+                      exercise.nome ||
+                      "Exercício"
+                    )}
+                      </div>
+
+
+                      <div
+                        style="
+                          font-size:13px;
+                          margin-bottom:12px;
+                        "
+                      >
+                        Grupo muscular:
+                        <strong>
+                          ${esc(
+                      exercise.grupo ||
+                      "Não informado"
+                    )}
+                        </strong>
+                      </div>
+
+
+                      <div
+                        style="
+                          display:grid;
+                          grid-template-columns:
+                            repeat(
+                              4,
+                              minmax(0,1fr)
+                            );
+                          gap:12px;
+                        "
+                      >
+
+                        <div>
+                          <small>Séries</small>
+                          <strong>
+                            ${esc(
+                      exercise.series ||
+                      "—"
+                    )}
+                          </strong>
+                        </div>
+
+
+                        <div>
+                          <small>Repetições</small>
+                          <strong>
+                            ${esc(
+                      exercise.repeticoes ||
+                      "—"
+                    )}
+                          </strong>
+                        </div>
+
+
+                        <div>
+                          <small>Carga</small>
+                          <strong>
+                            ${esc(
+                      exercise.carga ||
+                      "—"
+                    )}
+                          </strong>
+                        </div>
+
+
+                        <div>
+                          <small>Descanso</small>
+                          <strong>
+                            ${esc(
+                      exercise.descanso ||
+                      "—"
+                    )}
+                          </strong>
+                        </div>
+
+                      </div>
+
+
+                      ${exercise.observacoes
+                        ?
+
+                        `
+                            <div
+                              style="
+                                margin-top:12px;
+                              "
+                            >
+
+                              <small>
+                                Observações
+                              </small>
+
+                              <div>
+                                ${esc(
+                          exercise.observacoes
+                        )}
+                              </div>
+
+                            </div>
+                          `
+
+                        :
+
+                        ""
+                      }
+
+                    </div>
+
+                  `
+                  )
+                  .join("")}
+
+            `;
+
+            }
+          )
+          .join("")
+
+        :
+
+        `
+        <div>
+          Nenhum exercício cadastrado.
+        </div>
+      `;
+
+    content.innerHTML = `
+
+    <div
+      style="
+        display:grid;
+        grid-template-columns:
+          repeat(
+            3,
+            minmax(0,1fr)
+          );
+        gap:16px;
+        margin-bottom:20px;
+      "
+    >
+
+      <div>
+
+        <small>Aluno</small>
+
+        <strong>
+          ${esc(
+      student?.nome ||
+      "Aluno não encontrado"
+    )}
+        </strong>
+
+      </div>
+
+
+      <div>
+
+        <small>Ficha</small>
+
+        <strong>
+          ${esc(
+      workout.nome ||
+      "Ficha de treino"
+    )}
+        </strong>
+
+      </div>
+
+
+      <div>
+
+        <small>Objetivo</small>
+
+        <strong>
+          ${esc(
+      workout.objetivo ||
+      "—"
+    )}
+        </strong>
+
+      </div>
+
+    </div>
+
+
+    <div class="section-title">
+      Exercícios
+    </div>
+
+
+    <div>
+      ${exerciseRows}
+    </div>
+
+  `;
+
+
+    viewer.classList.remove(
+      "hidden"
+    );
+
+
+    viewer.scrollIntoView({
+      behavior: "smooth",
+      block: "start"
+    });
+  }
+
+  /* =========================================================
+     DUPLICAR FICHA
+     ========================================================= */
+
+  async function duplicateWorkout(id) {
+
+    const workout =
+      workoutCache.find(
+        item =>
+          String(item.id) ===
+          String(id)
+      );
+
+
+    if (!workout) {
+
+      return toast(
+        "Ficha não encontrada.",
+        true
+      );
+
+    }
+
+
+    const student =
+      studentsCache.find(
+        item =>
+          String(item.id) ===
+          String(workout.aluno_id)
+      );
+
+
+    const originalName =
+      workout.nome ||
+      "Ficha de treino";
+
+
+    const newName =
+      prompt(
+        "Nome da nova ficha:",
+        `${originalName} - Cópia`
+      );
+
+
+    if (
+      newName === null
+    ) {
+      return;
+    }
+
+
+    const finalName =
+      newName.trim();
+
+
+    if (!finalName) {
+
+      return toast(
+        "Informe o nome da nova ficha.",
+        true
+      );
+
+    }
+
+    try {
+
+      const payload = {
+
+        aluno_id:
+          workout.aluno_id,
+
+        nome:
+          finalName,
+
+        objetivo:
+          workout.objetivo ||
+          student?.objetivo ||
+          null,
+
+        conteudo:
+          workout.conteudo || {
+            exercicios: []
+          },
+
+        status:
+          workout.status ||
+          "ativo",
+
+        gerado_por:
+          workout.gerado_por ||
+          "manual"
+
+      };
+
+
+      const {
+        error
+      } =
+        await client
+          .from("treinos")
+          .insert(
+            payload
+          );
+
+
+      if (error) {
+
+        console.error(
+          "Erro ao duplicar ficha:",
+          error
+        );
+
+        return toast(
+          error.message ||
+          "Não foi possível duplicar a ficha.",
+          true
+        );
+
+      }
+
+
+      toast(
+        "Ficha duplicada com sucesso."
+      );
+
+
+      await loadWorkouts();
+
+
+    } catch (error) {
+
+      console.error(
+        "Erro ao duplicar ficha:",
+        error
+      );
+
+      toast(
+        "Erro ao duplicar ficha.",
+        true
+      );
+
+    }
+
+  }
+
+  /* =========================================================
+     FECHAR VISUALIZAÇÃO
+     ========================================================= */
+
+  function closeWorkoutViewer() {
+
+    $("workoutViewer")
+      ?.classList.add(
+        "hidden"
+      );
+
+  }
+
+
+  $("closeWorkoutViewerBtn")
+    ?.addEventListener(
+      "click",
+      closeWorkoutViewer
+    );
+
+  /* =========================================================
+     RENDERIZAR FICHAS
+     ========================================================= */
+
+  function renderWorkouts() {
+
+    const tbody =
+      $("workoutTableBody");
+
+    if (!tbody) return;
+
+
+    const search =
+      (
+        $("workoutSearch")
+          ?.value || ""
+      )
+        .trim()
+        .toLowerCase();
+
+
+    const statusFilter =
+      $("workoutStatus")
+        ?.value || "";
+
+
+    const studentsById =
+      {};
+
+
+    studentsCache.forEach(
+      student => {
+
+        studentsById[
+          String(student.id)
+        ] =
+          student;
+
+      }
+    );
+
+
+    const rows =
+      workoutCache.filter(
+        workout => {
+
+          const student =
+            studentsById[
+            String(
+              workout.aluno_id
+            )
+            ];
+
+
+          const studentName =
+            student?.nome || "";
+
+
+          const matchesSearch =
+            !search ||
+            studentName
+              .toLowerCase()
+              .includes(
+                search
+              );
+
+
+          const matchesStatus =
+            !statusFilter ||
+            String(
+              workout.status || ""
+            ).toLowerCase() ===
+            statusFilter.toLowerCase();
+
+
+          return (
+            matchesSearch &&
+            matchesStatus
+          );
+
+        }
+      );
+
+
+    if (!rows.length) {
+
+      tbody.innerHTML = `
+
+      <tr>
+
+        <td colspan="7">
+
+          Nenhuma ficha de treino cadastrada.
+
+        </td>
+
+      </tr>
+
+    `;
+
+      updateWorkoutStats();
+
+      return;
+
+    }
+
+
+    tbody.innerHTML =
+      rows
+        .map(
+          workout => {
+
+            const student =
+              studentsById[
+              String(
+                workout.aluno_id
+              )
+              ];
+
+
+            const studentName =
+              student?.nome ||
+              "Aluno não encontrado";
+
+
+            const exercises =
+              Array.isArray(
+                workout
+                  .conteudo
+                  ?.exercicios
+              )
+                ?
+                workout
+                  .conteudo
+                  .exercicios
+                  .length
+                :
+                0;
+
+
+            const updated =
+              workout.atualizado_em
+                ?
+                new Date(
+                  workout.atualizado_em
+                ).toLocaleDateString(
+                  "pt-BR"
+                )
+                :
+                "—";
+
+
+            return `
+
+            <tr>
+
+              <td>
+
+                <strong>
+
+                  ${esc(
+              studentName
+            )}
+
+                </strong>
+
+              </td>
+
+
+              <td>
+
+                ${esc(
+              workout.objetivo ||
+              student?.objetivo ||
+              "—"
+            )}
+
+              </td>
+
+
+              <td>
+
+                ${esc(
+              workout.nome ||
+              "Ficha de treino"
+            )}
+
+              </td>
+
+
+              <td>
+
+                ${exercises}
+
+              </td>
+
+
+              <td>
+
+                ${updated}
+
+              </td>
+
+
+              <td>
+
+                <span
+                  class="status ${String(
+              workout.status ||
+              ""
+            ).toLowerCase()
+              }"
+                >
+
+                  ${esc(
+                workout.status ||
+                "—"
+              )}
+
+                </span>
+
+              </td>
+
+
+<td>
+
+<div
+    style="
+      display:flex;
+      gap:5px;
+      flex-wrap:wrap;
+      align-items:center;
+    "
+  >
+
+    <button
+      type="button"
+      class="secondary"
+      onclick="viewWorkout('${workout.id}')"
+      title="Visualizar ficha"
+    >
+      👁 Ver
+    </button>
+
+
+    <button
+      type="button"
+      class="secondary"
+      onclick="editWorkout('${workout.id}')"
+      title="Editar ficha"
+    >
+      ✏️ Editar
+    </button>
+
+
+    <button
+      type="button"
+      class="secondary"
+      onclick="duplicateWorkout('${workout.id}')"
+      title="Duplicar ficha"
+    >
+      📋 Duplicar
+    </button>
+
+  </div>
+
+</td>
+
+            </tr>
+
+          `;
+
+          }
+        )
+        .join("");
+
+
+    updateWorkoutStats();
+
+  }
+
+  /* =========================================================
+     INDICADORES
+     ========================================================= */
+
+  function updateWorkoutStats() {
+
+    const total =
+      $("workoutStatTotal");
+
+
+    const students =
+      $("workoutStatStudents");
+
+
+    const exercises =
+      $("workoutStatExercises");
+
+
+    if (total) {
+
+      total.textContent =
+        workoutCache.length;
+
+    }
+
+
+    if (students) {
+
+      const uniqueStudents =
+        new Set(
+          workoutCache.map(
+            workout =>
+              workout.aluno_id
+          )
+        );
+
+
+      students.textContent =
+        uniqueStudents.size;
+
+    }
+
+
+    if (exercises) {
+
+      const totalExercises =
+        workoutCache.reduce(
+          (
+            total,
+            workout
+          ) => {
+
+            const list =
+              workout
+                .conteudo
+                ?.exercicios;
+
+
+            return (
+              total +
+              (
+                Array.isArray(list)
+                  ?
+                  list.length
+                  :
+                  0
+              )
+            );
+
+          },
+          0
+        );
+
+
+      exercises.textContent =
+        totalExercises;
+
+    }
+    const divisionStats =
+      $("workoutDivisionStats");
+
+    if (divisionStats) {
+
+      const divisions = [
+        "A",
+        "B",
+        "C",
+        "D",
+        "E"
+      ];
+
+      divisionStats.innerHTML =
+        divisions
+          .map(
+            division => {
+
+              const count =
+                workoutCache.reduce(
+                  (
+                    total,
+                    workout
+                  ) => {
+
+                    const exercises =
+                      workout
+                        .conteudo
+                        ?.exercicios;
+
+                    if (
+                      !Array.isArray(
+                        exercises
+                      )
+                    ) {
+                      return total;
+                    }
+
+                    return (
+                      total +
+                      exercises.filter(
+                        exercise =>
+                          (
+                            exercise.divisao ||
+                            "A"
+                          ) === division
+                      ).length
+                    );
+
+                  },
+                  0
+                );
+
+              return `
+
+              <div class="stat">
+
+                <span>
+                  🏋️
+                </span>
+
+                <b>
+                  ${count}
+                </b>
+
+                <small>
+                  Treino ${division}
+                </small>
+
+              </div>
+
+            `;
+
+            }
+          )
+          .join("");
+
+    }
+  }
+
+
+  /* =========================================================
+     EVENTOS
+     ========================================================= */
+
+  function initWorkoutEvents() {
+
+    $("workoutSearch")
+      ?.addEventListener(
+        "input",
+        renderWorkouts
+      );
+
+
+    $("workoutStatus")
+      ?.addEventListener(
+        "change",
+        renderWorkouts
+      );
+
+
+    $("newWorkoutBtn")
+      ?.addEventListener(
+        "click",
+        openWorkoutModal
+      );
+    $("generateWorkoutBtn")
+      ?.addEventListener(
+        "click",
+        openWorkoutGenerator
+      );
+    $("buildWorkoutBtn")
+      ?.addEventListener(
+        "click",
+        buildAssistedWorkout
+      );
+
+    $("cancelWorkoutBtn")
+      ?.addEventListener(
+        "click",
+        closeWorkoutEditor
+      );
+
+
+    $("addExerciseBtn")
+      ?.addEventListener(
+        "click",
+        () =>
+          addExerciseRow()
+      );
+
+
+    $("workoutForm")
+      ?.addEventListener(
+        "submit",
+        saveWorkout
+      );
+  }
+
+  function buildAssistedWorkout() {
+
+    const goal =
+      $("workoutGoal")?.value || "";
+
+    const level =
+      $("workoutGeneratorLevel")?.value || "";
+
+    const frequency =
+      $("workoutGeneratorFrequency")?.value || "";
+
+    const time =
+      $("workoutGeneratorTime")?.value || "";
+
+    const notes =
+      $("workoutGeneratorNotes")?.value.trim() || "";
+
+
+    if (!goal) {
+
+      return toast(
+        "Selecione o objetivo do treino.",
+        true
+      );
+
+    }
+
+
+    if (!level) {
+
+      return toast(
+        "Selecione o nível do aluno.",
+        true
+      );
+
+    }
+
+
+    if (!frequency) {
+
+      return toast(
+        "Selecione a frequência semanal.",
+        true
+      );
+
+    }
+
+
+    if (!time) {
+
+      return toast(
+        "Selecione o tempo disponível.",
+        true
+      );
+
+    }
+
+
+    const templates = {
+
+      "Hipertrofia": [
+
+        {
+          nome: "Supino reto",
+          series: 4,
+          repeticoes: "8-12",
+          descanso: "60-90s",
+          grupo: "Peito"
+        },
+
+        {
+          nome: "Puxada frontal",
+          series: 4,
+          repeticoes: "8-12",
+          descanso: "60-90s",
+          grupo: "Costas"
+        },
+
+        {
+          nome: "Agachamento livre",
+          series: 4,
+          repeticoes: "8-12",
+          descanso: "90s",
+          grupo: "Pernas"
+        },
+
+        {
+          nome: "Desenvolvimento com halteres",
+          series: 3,
+          repeticoes: "10-12",
+          descanso: "60s",
+          grupo: "Ombros"
+        },
+
+        {
+          nome: "Rosca direta",
+          series: 3,
+          repeticoes: "10-12",
+          descanso: "60s",
+          grupo: "Bíceps"
+        },
+
+        {
+          nome: "Tríceps na polia",
+          series: 3,
+          repeticoes: "10-12",
+          descanso: "60s",
+          grupo: "Tríceps"
+        }
+
+      ],
+
+
+      "Força": [
+
+        {
+          nome: "Agachamento livre",
+          series: 5,
+          repeticoes: "3-6",
+          descanso: "120-180s",
+          grupo: "Pernas"
+        },
+
+        {
+          nome: "Supino reto",
+          series: 5,
+          repeticoes: "3-6",
+          descanso: "120-180s",
+          grupo: "Peito"
+        },
+
+        {
+          nome: "Remada curvada",
+          series: 4,
+          repeticoes: "4-6",
+          descanso: "120s",
+          grupo: "Costas"
+        },
+
+        {
+          nome: "Desenvolvimento com barra",
+          series: 4,
+          repeticoes: "5-8",
+          descanso: "120s",
+          grupo: "Ombros"
+        }
+
+      ],
+
+
+      "Emagrecimento": [
+
+        {
+          nome: "Agachamento com peso corporal",
+          series: 3,
+          repeticoes: "12-15",
+          descanso: "45s",
+          grupo: "Pernas"
+        },
+
+        {
+          nome: "Supino com halteres",
+          series: 3,
+          repeticoes: "12-15",
+          descanso: "45s",
+          grupo: "Peito"
+        },
+
+        {
+          nome: "Puxada frontal",
+          series: 3,
+          repeticoes: "12-15",
+          descanso: "45s",
+          grupo: "Costas"
+        },
+
+        {
+          nome: "Avanço",
+          series: 3,
+          repeticoes: "10-12",
+          descanso: "45s",
+          grupo: "Pernas"
+        },
+
+        {
+          nome: "Desenvolvimento com halteres",
+          series: 3,
+          repeticoes: "12-15",
+          descanso: "45s",
+          grupo: "Ombros"
+        }
+
+      ],
+
+
+      "Condicionamento": [
+
+        {
+          nome: "Agachamento",
+          series: 3,
+          repeticoes: "12-15",
+          descanso: "45s",
+          grupo: "Pernas"
+        },
+
+        {
+          nome: "Flexão de braços",
+          series: 3,
+          repeticoes: "10-15",
+          descanso: "45s",
+          grupo: "Peito"
+        },
+
+        {
+          nome: "Remada baixa",
+          series: 3,
+          repeticoes: "12-15",
+          descanso: "45s",
+          grupo: "Costas"
+        },
+
+        {
+          nome: "Elevação lateral",
+          series: 3,
+          repeticoes: "12-15",
+          descanso: "45s",
+          grupo: "Ombros"
+        }
+
+      ],
+
+
+      "Qualidade de vida": [
+
+        {
+          nome: "Leg press",
+          series: 3,
+          repeticoes: "10-15",
+          descanso: "60s",
+          grupo: "Pernas"
+        },
+
+        {
+          nome: "Remada baixa",
+          series: 3,
+          repeticoes: "10-15",
+          descanso: "60s",
+          grupo: "Costas"
+        },
+
+        {
+          nome: "Supino máquina",
+          series: 3,
+          repeticoes: "10-15",
+          descanso: "60s",
+          grupo: "Peito"
+        },
+
+        {
+          nome: "Desenvolvimento máquina",
+          series: 3,
+          repeticoes: "10-15",
+          descanso: "60s",
+          grupo: "Ombros"
+        }
+
+      ],
+
+
+      "Reabilitação": [
+
+        {
+          nome: "Leg press leve",
+          series: 2,
+          repeticoes: "12-15",
+          descanso: "60s",
+          grupo: "Pernas"
+        },
+
+        {
+          nome: "Remada máquina",
+          series: 2,
+          repeticoes: "12-15",
+          descanso: "60s",
+          grupo: "Costas"
+        },
+
+        {
+          nome: "Supino máquina leve",
+          series: 2,
+          repeticoes: "12-15",
+          descanso: "60s",
+          grupo: "Peito"
+        }
+
+      ]
+
+    };
+
+
+    let selected =
+      templates[goal] ||
+      templates["Hipertrofia"];
+
+
+    if (level === "Iniciante") {
+
+      selected =
+        selected
+          .slice(0, 4)
+          .map(
+            exercise => ({
+              ...exercise,
+              series:
+                Math.min(
+                  Number(exercise.series) || 3,
+                  3
+                )
+            })
+          );
+
+    }
+
+
+    if (time === "30") {
+
+      selected =
+        selected.slice(0, 3);
+
+    }
+
+
+    if (time === "45") {
+
+      selected =
+        selected.slice(0, 4);
+
+    }
+
+
+    $("exerciseList").innerHTML = "";
+
+
+    selected.forEach(
+      exercise => {
+
+        addExerciseRow({
+
+          nome:
+            exercise.nome,
+
+          series:
+            exercise.series,
+
+          repeticoes:
+            exercise.repeticoes,
+
+          carga:
+            "",
+
+          descanso:
+            exercise.descanso,
+
+          observacoes:
+            exercise.grupo
+
+        });
+
+      }
+    );
+
+
+    const name =
+      $("workoutName");
+
+
+    if (
+      name &&
+      !name.value.trim()
+    ) {
+
+      name.value =
+        `Treino ${goal} - ${frequency}x`;
+
+    }
+
+
+    if (notes) {
+
+      selected.forEach(
+        exercise => {
+
+          if (
+            exercise.observacoes
+          ) {
+
+            exercise.observacoes +=
+              ` | ${notes}`;
+
+          }
+
+        }
+      );
+
+    }
+
+
+    toast(
+      "Sugestão de treino montada com sucesso."
+    );
+
+  }
+
+  /* =========================================================
+     INICIALIZAÇÃO
+     ========================================================= */
+
+  initCommercialEvents();
+
+  loadLeads();
+
+  initFinanceEvents();
+
+  initEvaluationEvents();
+
+  loadEvaluations();
+
+  initWorkoutEvents();
+
+  // =========================================================
+  // DASHBOARD FINANCEIRO - GRÁFICOS
+  // =========================================================
+
+  function renderFinanceCharts() {
+
+    const revenueCanvas =
+      document.getElementById("financeRevenueChart");
+
+    const statusCanvas =
+      document.getElementById("financeStatusChart");
+
+    const paymentCanvas =
+      document.getElementById("financePaymentChart");
+
+    if (
+      !revenueCanvas ||
+      !statusCanvas ||
+      !paymentCanvas
+    ) {
+      return;
+    }
+
+    // -------------------------------------------------------
+    // RECEITA POR MÊS
+    // -------------------------------------------------------
+
+    const monthlyData = {};
+
+    financeCache.forEach(item => {
+
+      if (item.status !== "pago") {
+        return;
+      }
+
+      if (!item.data_pagamento) {
+        return;
+      }
+
+      const date =
+        new Date(item.data_pagamento + "T00:00:00");
+
+      if (Number.isNaN(date.getTime())) {
+        return;
+      }
+
+      const monthKey =
+        `${date.getFullYear()}-${String(
+          date.getMonth() + 1
+        ).padStart(2, "0")}`;
+
+      monthlyData[monthKey] =
+        (monthlyData[monthKey] || 0) +
+        Number(item.valor || 0);
+    });
+
+    const monthKeys =
+      Object.keys(monthlyData).sort();
+
+    const monthLabels =
+      monthKeys.map(key => {
+
+        const [year, month] =
+          key.split("-");
+
+        const date =
+          new Date(
+            Number(year),
+            Number(month) - 1,
+            1
+          );
+
+        return date.toLocaleDateString(
+          "pt-BR",
+          {
+            month: "short",
+            year: "numeric"
+          }
+        );
+      });
+
+    const monthlyValues =
+      monthKeys.map(
+        key => monthlyData[key]
+      );
+
+    // -------------------------------------------------------
+    // DESTRUIR GRÁFICOS ANTERIORES
+    // -------------------------------------------------------
+
+    if (financeRevenueChart) {
+      financeRevenueChart.destroy();
+    }
+
+    if (financeStatusChart) {
+      financeStatusChart.destroy();
+    }
+
+    if (financePaymentChart) {
+      financePaymentChart.destroy();
+    }
+
+    // -------------------------------------------------------
+    // GRÁFICO DE RECEITA
+    // -------------------------------------------------------
+
+    financeRevenueChart =
+      new Chart(revenueCanvas, {
+
+        type: "bar",
+
+        data: {
+          labels: monthLabels,
+
+          datasets: [
+            {
+              label: "Receita",
+              data: monthlyValues,
+              borderWidth: 1
+            }
+          ]
+        },
+
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+
+          plugins: {
+            legend: {
+              display: false
+            },
+
+            tooltip: {
+              callbacks: {
+                label: context => {
+
+                  return `${context.dataset.label}: ${formatMoney(
+                    context.raw
+                  )}`;
+
+                }
+              }
+            }
+          }
+        }
+      });
+
+    // -------------------------------------------------------
+    // STATUS DOS LANÇAMENTOS
+    // -------------------------------------------------------
+
+    const statusData = {
+      pago: 0,
+      aberto: 0,
+      atrasado: 0,
+      cancelado: 0
+    };
+
+    financeCache.forEach(item => {
+
+      const status =
+        item.status || "aberto";
+
+      if (
+        Object.prototype.hasOwnProperty.call(
+          statusData,
+          status
+        )
+      ) {
+
+        statusData[status] +=
+          Number(item.valor || 0);
+
+      }
+
+    });
+
+    financeStatusChart =
+      new Chart(statusCanvas, {
+
+        type: "doughnut",
+
+        data: {
+
+          labels: [
+            "Pago",
+            "Aberto",
+            "Atrasado",
+            "Cancelado"
+          ],
+
+          datasets: [
+            {
+              data: [
+                statusData.pago,
+                statusData.aberto,
+                statusData.atrasado,
+                statusData.cancelado
+              ],
+              borderWidth: 1
+            }
+          ]
+        },
+
+        options: {
+
+          responsive: true,
+          maintainAspectRatio: false,
+
+          plugins: {
+
+            legend: {
+              position: "bottom"
+            },
+
+            tooltip: {
+
+              callbacks: {
+
+                label: context => {
+
+                  return `${context.label}: ${formatMoney(
+                    context.raw
+                  )}`;
+
+                }
+
+              }
+
+            }
+
+          }
+
+        }
+
+      });
+
+    // -------------------------------------------------------
+    // FORMAS DE PAGAMENTO
+    // -------------------------------------------------------
+
+    const paymentData = {};
+
+    financeCache.forEach(item => {
+
+      if (item.status !== "pago") {
+        return;
+      }
+
+      const forma =
+        item.forma_pagamento ||
+        "Não informado";
+
+      paymentData[forma] =
+        (paymentData[forma] || 0) +
+        Number(item.valor || 0);
+
+    });
+
+    const paymentLabels =
+      Object.keys(paymentData);
+
+    const paymentValues =
+      paymentLabels.map(
+        key => paymentData[key]
+      );
+
+    financePaymentChart =
+      new Chart(paymentCanvas, {
+
+        type: "doughnut",
+
+        data: {
+
+          labels: paymentLabels,
+
+          datasets: [
+            {
+              data: paymentValues,
+              borderWidth: 1
+            }
+          ]
+        },
+
+        options: {
+
+          responsive: true,
+          maintainAspectRatio: false,
+
+          plugins: {
+
+            legend: {
+              position: "bottom"
+            },
+
+            tooltip: {
+
+              callbacks: {
+
+                label: context => {
+
+                  return `${context.label}: ${formatMoney(
+                    context.raw
+                  )}`;
+
+                }
+
+              }
+
+            }
+
+          }
+
+        }
+
+      });
+
+  }
+/* =========================================================
+   TESTE TEMPORÁRIO - CONSULTA POR MATRÍCULA
+   ========================================================= */

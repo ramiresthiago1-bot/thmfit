@@ -8200,3 +8200,3847 @@ async function editEvaluation(evaluationId) {
   }
 
 }
+
+/* =========================================================
+   THM FIT - RELATÓRIOS / EVOLUÇÃO CORPORAL
+   ========================================================= */
+
+(() => {
+
+  let reportEvaluationCache = [];
+  let reportMeasuresCache = [];
+  let reportWeightChart = null;
+  let reportCompositionChart = null;
+  let reportCircumferenceChart = null;
+
+  const reportMetrics = {
+    peso_kg: {
+      label: "Peso",
+      unit: "kg",
+      group: "weight"
+    },
+    gordura_percent: {
+      label: "Gordura corporal",
+      unit: "%",
+      group: "composition"
+    },
+    massa_muscular_kg: {
+      label: "Massa muscular",
+      unit: "kg",
+      group: "composition"
+    },
+    agua_percent: {
+      label: "Água corporal",
+      unit: "%",
+      group: "composition"
+    }
+  };
+
+  const circumferenceMetrics = {
+    pescoco: "Pescoço",
+    ombros: "Ombros",
+    peitoral: "Peitoral",
+    cintura: "Cintura",
+    abdomen: "Abdômen",
+    quadril: "Quadril",
+    braco_direito: "Braço direito",
+    braco_esquerdo: "Braço esquerdo",
+    antebraco_direito: "Antebraço direito",
+    antebraco_esquerdo: "Antebraço esquerdo",
+    coxa_direita: "Coxa direita",
+    coxa_esquerda: "Coxa esquerda",
+    panturrilha_direita: "Panturrilha direita",
+    panturrilha_esquerda: "Panturrilha esquerda"
+  };
+
+  /* ---------------------------------------------------------
+     CRIAR PÁGINA DE RELATÓRIOS
+     --------------------------------------------------------- */
+
+  function ensureReportsPage() {
+
+    let page = $("relatoriosPage");
+
+    if (!page) {
+
+      page = document.createElement("section");
+
+      page.id = "relatoriosPage";
+      page.className = "page hidden";
+
+      const app =
+        $("app") ||
+        document.body;
+
+      app.appendChild(page);
+    }
+
+    return page;
+  }
+
+  /* ---------------------------------------------------------
+     MONTAR INTERFACE
+     --------------------------------------------------------- */
+
+  function buildReportsInterface() {
+
+    const page =
+      ensureReportsPage();
+
+    if (!page) return;
+
+    page.innerHTML = `
+
+      <div style="
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        gap:16px;
+        margin-bottom:20px;
+        flex-wrap:wrap;
+      ">
+
+        <div>
+          <h2 style="
+            margin:0 0 6px 0;
+          ">
+            Evolução corporal
+          </h2>
+
+          <p style="
+            margin:0;
+            opacity:.72;
+          ">
+            Acompanhe a evolução das avaliações físicas dos alunos.
+          </p>
+        </div>
+
+      </div>
+
+      <!-- SELEÇÃO DO ALUNO -->
+<div style="
+  display:flex;
+  justify-content:flex-end;
+  margin-bottom:16px;
+">
+  <button
+    type="button"
+    id="generateStudentReportBtn"
+  >
+    📄 Gerar relatório
+  </button>
+</div>
+      <div style="
+        background:var(--card-bg, #ffffff);
+        border:1px solid var(--border-color, #e5e7eb);
+        border-radius:14px;
+        padding:18px;
+        margin-bottom:20px;
+      ">
+
+        <div style="
+          display:grid;
+          grid-template-columns:minmax(240px, 1fr) auto;
+          gap:16px;
+          align-items:end;
+        ">
+
+          <div>
+
+            <label
+              for="reportStudent"
+              style="
+                display:block;
+                font-weight:600;
+                margin-bottom:7px;
+              "
+            >
+              Aluno
+            </label>
+
+            <select
+              id="reportStudent"
+              style="
+                width:100%;
+                min-height:42px;
+                padding:9px 12px;
+                border-radius:8px;
+                border:1px solid #d1d5db;
+                background:inherit;
+              "
+            >
+              <option value="">
+                Selecione um aluno
+              </option>
+            </select>
+
+          </div>
+
+          <div>
+            <button
+              type="button"
+              id="reportReloadBtn"
+              class="secondary"
+            >
+              Atualizar
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- RESUMO -->
+
+      <div
+        id="reportSummary"
+        style="
+          display:grid;
+          grid-template-columns:repeat(4,minmax(0,1fr));
+          gap:14px;
+          margin-bottom:20px;
+        "
+      >
+      </div>
+
+      <!-- GRÁFICOS -->
+
+      <div
+        id="reportCharts"
+        style="
+          display:grid;
+          grid-template-columns:repeat(2,minmax(0,1fr));
+          gap:18px;
+          margin-bottom:20px;
+        "
+      >
+
+        <div style="
+          border:1px solid #e5e7eb;
+          border-radius:14px;
+          padding:18px;
+          background:var(--card-bg,#fff);
+        ">
+
+          <div style="
+            font-weight:700;
+            margin-bottom:14px;
+          ">
+            Evolução do peso
+          </div>
+
+          <div style="
+            position:relative;
+            height:300px;
+          ">
+            <canvas id="reportWeightChart"></canvas>
+          </div>
+
+        </div>
+
+        <div style="
+          border:1px solid #e5e7eb;
+          border-radius:14px;
+          padding:18px;
+          background:var(--card-bg,#fff);
+        ">
+
+          <div style="
+            font-weight:700;
+            margin-bottom:14px;
+          ">
+            Composição corporal
+          </div>
+
+          <div style="
+            position:relative;
+            height:300px;
+          ">
+            <canvas id="reportCompositionChart"></canvas>
+          </div>
+
+        </div>
+
+        <div style="
+          grid-column:1 / -1;
+          border:1px solid #e5e7eb;
+          border-radius:14px;
+          padding:18px;
+          background:var(--card-bg,#fff);
+        ">
+
+          <div style="
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            gap:12px;
+            flex-wrap:wrap;
+            margin-bottom:14px;
+          ">
+
+            <div style="
+              font-weight:700;
+            ">
+              Evolução das medidas corporais
+            </div>
+
+            <select
+              id="reportCircumferenceMetric"
+              style="
+                min-width:190px;
+                min-height:38px;
+                padding:7px 10px;
+                border-radius:8px;
+                border:1px solid #d1d5db;
+                background:inherit;
+              "
+            >
+            </select>
+
+          </div>
+
+          <div style="
+            position:relative;
+            height:320px;
+          ">
+            <canvas id="reportCircumferenceChart"></canvas>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- TABELA DE EVOLUÇÃO -->
+
+      <div style="
+        border:1px solid #e5e7eb;
+        border-radius:14px;
+        padding:18px;
+        background:var(--card-bg,#fff);
+        overflow:auto;
+      ">
+
+        <div style="
+          font-weight:700;
+          margin-bottom:15px;
+        ">
+          Histórico das avaliações
+        </div>
+
+        <div id="reportEvolutionTable">
+          <p class="empty-state">
+            Selecione um aluno para visualizar a evolução.
+          </p>
+        </div>
+
+      </div>
+
+    `;
+
+    const circumferenceSelect =
+      $("reportCircumferenceMetric");
+
+    if (circumferenceSelect) {
+
+      circumferenceSelect.innerHTML =
+        Object.entries(
+          circumferenceMetrics
+        )
+        .map(
+          ([key, label]) => `
+            <option value="${key}">
+              ${label}
+            </option>
+          `
+        )
+        .join("");
+
+    }
+
+    $("reportStudent")
+      ?.addEventListener(
+        "change",
+        () => {
+          loadStudentReport(
+            $("reportStudent").value
+          );
+        }
+      );
+
+    $("reportReloadBtn")
+      ?.addEventListener(
+        "click",
+        () => {
+          loadStudentReport(
+            $("reportStudent")?.value
+          );
+        }
+      );
+
+    $("reportCircumferenceMetric")
+      ?.addEventListener(
+        "change",
+        () => {
+          renderCircumferenceChart();
+        }
+      );
+
+  }
+
+  /* ---------------------------------------------------------
+     CARREGAR ALUNOS
+     --------------------------------------------------------- */
+
+  function loadReportStudents() {
+
+    const select =
+      $("reportStudent");
+
+    if (!select) return;
+
+    const currentValue =
+      select.value;
+
+    const students =
+      Array.isArray(studentsCache)
+        ? [...studentsCache]
+        : [];
+
+    students.sort(
+      (a, b) =>
+        String(a.nome || "")
+          .localeCompare(
+            String(b.nome || ""),
+            "pt-BR"
+          )
+    );
+
+    select.innerHTML = `
+      <option value="">
+        Selecione um aluno
+      </option>
+    `;
+
+    students.forEach(student => {
+
+      const option =
+        document.createElement("option");
+
+      option.value =
+        student.id;
+
+      option.textContent =
+        `${student.matricula || "—"} — ${student.nome}`;
+
+      select.appendChild(option);
+
+    });
+
+    if (
+      currentValue &&
+      students.some(
+        student =>
+          String(student.id) ===
+          String(currentValue)
+      )
+    ) {
+
+      select.value =
+        currentValue;
+
+    }
+
+  }
+
+  /* ---------------------------------------------------------
+     CARREGAR AVALIAÇÕES DO ALUNO
+     --------------------------------------------------------- */
+
+  async function loadStudentReport(
+    studentId
+  ) {
+
+    clearReport();
+
+    if (!studentId) {
+
+      renderReportEmpty(
+        "Selecione um aluno para visualizar a evolução."
+      );
+
+      return;
+
+    }
+
+    let evaluations = [];
+    let measures = [];
+
+    /* MODO DEMONSTRAÇÃO */
+
+    if (demoMode) {
+
+      const cache =
+        JSON.parse(
+          localStorage.getItem(
+            "thm_demo_avaliacoes"
+          ) || "[]"
+        );
+
+      evaluations =
+        cache.filter(
+          evaluation =>
+            String(evaluation.aluno_id) ===
+            String(studentId)
+        );
+
+      measures =
+        evaluations.map(
+          evaluation => ({
+            avaliacao_id:
+              evaluation.id,
+            ...(evaluation.medidas_corporais || {})
+          })
+        );
+
+    }
+
+    /* SUPABASE */
+
+    else {
+
+      const evaluationResult =
+        await client
+          .from("avaliacoes")
+          .select(`
+            id,
+            aluno_id,
+            avaliado_em,
+            peso_kg,
+            gordura_percent,
+            massa_muscular_kg,
+            agua_percent,
+            gordura_visceral,
+            massa_ossea_kg,
+            metabolismo_basal,
+            idade_metabolica,
+            observacao
+          `)
+          .eq(
+            "aluno_id",
+            studentId
+          )
+          .order(
+            "avaliado_em",
+            {
+              ascending:true
+            }
+          );
+
+      if (evaluationResult.error) {
+
+        console.error(
+          "Erro ao carregar avaliações do relatório:",
+          evaluationResult.error
+        );
+
+        toast(
+          "Erro ao carregar avaliações.",
+          true
+        );
+
+        return;
+
+      }
+
+      evaluations =
+        evaluationResult.data || [];
+
+      if (evaluations.length) {
+
+        const ids =
+          evaluations.map(
+            evaluation =>
+              evaluation.id
+          );
+
+        const measuresResult =
+          await client
+            .from("medidas_corporais")
+            .select("*")
+            .in(
+              "avaliacao_id",
+              ids
+            );
+
+        if (measuresResult.error) {
+
+          console.error(
+            "Erro ao carregar medidas do relatório:",
+            measuresResult.error
+          );
+
+        }
+
+        measures =
+          measuresResult.data || [];
+
+      }
+
+    }
+
+    reportEvaluationCache =
+      evaluations;
+
+    reportMeasuresCache =
+      measures;
+
+    renderReportSummary();
+
+    renderWeightChart();
+
+    renderCompositionChart();
+
+    renderCircumferenceChart();
+
+    renderEvolutionTable();
+
+  }
+
+  /* ---------------------------------------------------------
+     LIMPAR RELATÓRIO
+     --------------------------------------------------------- */
+
+  function clearReport() {
+
+    reportEvaluationCache = [];
+    reportMeasuresCache = [];
+
+    if (reportWeightChart) {
+      reportWeightChart.destroy();
+      reportWeightChart = null;
+    }
+
+    if (reportCompositionChart) {
+      reportCompositionChart.destroy();
+      reportCompositionChart = null;
+    }
+
+    if (reportCircumferenceChart) {
+      reportCircumferenceChart.destroy();
+      reportCircumferenceChart = null;
+    }
+
+    const summary =
+      $("reportSummary");
+
+    if (summary) {
+      summary.innerHTML = "";
+    }
+
+    const table =
+      $("reportEvolutionTable");
+
+    if (table) {
+      table.innerHTML = "";
+    }
+
+  }
+
+  /* ---------------------------------------------------------
+     ESTADO VAZIO
+     --------------------------------------------------------- */
+
+  function renderReportEmpty(
+    message
+  ) {
+
+    const table =
+      $("reportEvolutionTable");
+
+    if (!table) return;
+
+    table.innerHTML = `
+      <p class="empty-state">
+        ${esc(message)}
+      </p>
+    `;
+
+  }
+
+  /* ---------------------------------------------------------
+     DATA
+     --------------------------------------------------------- */
+
+  function formatReportDate(
+    value
+  ) {
+
+    if (!value) {
+      return "—";
+    }
+
+    const date =
+      new Date(
+        String(value).includes("T")
+          ? value
+          : `${value}T00:00:00`
+      );
+
+    if (
+      Number.isNaN(
+        date.getTime()
+      )
+    ) {
+
+      return String(value);
+
+    }
+
+    return date.toLocaleDateString(
+      "pt-BR"
+    );
+
+  }
+
+  /* ---------------------------------------------------------
+     NÚMERO
+     --------------------------------------------------------- */
+
+  function reportNumber(
+    value
+  ) {
+
+    const number =
+      Number(value);
+
+    return Number.isFinite(number)
+      ? number
+      : null;
+
+  }
+
+  /* ---------------------------------------------------------
+     MEDIDAS POR AVALIAÇÃO
+     --------------------------------------------------------- */
+
+  function getMeasuresForEvaluation(
+    evaluationId
+  ) {
+
+    return (
+      reportMeasuresCache.find(
+        measure =>
+          String(
+            measure.avaliacao_id
+          ) ===
+          String(evaluationId)
+      ) ||
+      {}
+    );
+
+  }
+
+  /* ---------------------------------------------------------
+     RESUMO
+     --------------------------------------------------------- */
+
+  function renderReportSummary() {
+
+    const container =
+      $("reportSummary");
+
+    if (!container) return;
+
+    if (
+      !reportEvaluationCache.length
+    ) {
+
+      container.innerHTML = `
+        <div style="
+          grid-column:1/-1;
+          padding:20px;
+          border:1px solid #e5e7eb;
+          border-radius:12px;
+        ">
+          Nenhuma avaliação encontrada para este aluno.
+        </div>
+      `;
+
+      return;
+
+    }
+
+    const first =
+      reportEvaluationCache[0];
+
+    const last =
+      reportEvaluationCache[
+        reportEvaluationCache.length - 1
+      ];
+
+    const firstWeight =
+      reportNumber(
+        first.peso_kg
+      );
+
+    const lastWeight =
+      reportNumber(
+        last.peso_kg
+      );
+
+    const firstFat =
+      reportNumber(
+        first.gordura_percent
+      );
+
+    const lastFat =
+      reportNumber(
+        last.gordura_percent
+      );
+
+    const firstMuscle =
+      reportNumber(
+        first.massa_muscular_kg
+      );
+
+    const lastMuscle =
+      reportNumber(
+        last.massa_muscular_kg
+      );
+
+    const variation = (
+      current,
+      initial,
+      unit
+    ) => {
+
+      if (
+        current === null ||
+        initial === null
+      ) {
+        return "—";
+      }
+
+      const difference =
+        current - initial;
+
+      const signal =
+        difference > 0
+          ? "+"
+          : "";
+
+      return `${signal}${difference.toFixed(1)} ${unit}`;
+
+    };
+
+    const cards = [
+
+      {
+        title: "Avaliações",
+        value:
+          reportEvaluationCache.length,
+        detail:
+          `Última: ${formatReportDate(last.avaliado_em)}`
+      },
+
+      {
+        title: "Peso atual",
+        value:
+          lastWeight !== null
+            ? `${lastWeight.toFixed(1)} kg`
+            : "—",
+        detail:
+          `Variação: ${variation(
+            lastWeight,
+            firstWeight,
+            "kg"
+          )}`
+      },
+
+      {
+        title: "Gordura corporal",
+        value:
+          lastFat !== null
+            ? `${lastFat.toFixed(1)}%`
+            : "—",
+        detail:
+          `Variação: ${variation(
+            lastFat,
+            firstFat,
+            "%"
+          )}`
+      },
+
+      {
+        title: "Massa muscular",
+        value:
+          lastMuscle !== null
+            ? `${lastMuscle.toFixed(1)} kg`
+            : "—",
+        detail:
+          `Variação: ${variation(
+            lastMuscle,
+            firstMuscle,
+            "kg"
+          )}`
+      }
+
+    ];
+
+    container.innerHTML =
+      cards
+        .map(card => `
+
+          <div style="
+            border:1px solid #e5e7eb;
+            border-radius:14px;
+            padding:18px;
+            background:var(--card-bg,#fff);
+          ">
+
+            <div style="
+              font-size:13px;
+              opacity:.7;
+              margin-bottom:8px;
+            ">
+              ${esc(card.title)}
+            </div>
+
+            <div style="
+              font-size:25px;
+              font-weight:700;
+              margin-bottom:6px;
+            ">
+              ${esc(card.value)}
+            </div>
+
+            <div style="
+              font-size:13px;
+              opacity:.72;
+            ">
+              ${esc(card.detail)}
+            </div>
+
+          </div>
+
+        `)
+        .join("");
+
+  }
+
+  /* ---------------------------------------------------------
+     GRÁFICO DE PESO
+     --------------------------------------------------------- */
+
+  function renderWeightChart() {
+
+    const canvas =
+      $("reportWeightChart");
+
+    if (
+      !canvas ||
+      typeof Chart === "undefined"
+    ) {
+      return;
+    }
+
+    if (reportWeightChart) {
+      reportWeightChart.destroy();
+    }
+
+    const valid =
+      reportEvaluationCache.filter(
+        evaluation =>
+          reportNumber(
+            evaluation.peso_kg
+          ) !== null
+      );
+
+    reportWeightChart =
+      new Chart(
+        canvas,
+        {
+          type:"line",
+
+          data:{
+            labels:
+              valid.map(
+                evaluation =>
+                  formatReportDate(
+                    evaluation.avaliado_em
+                  )
+              ),
+
+            datasets:[
+              {
+                label:"Peso (kg)",
+
+                data:
+                  valid.map(
+                    evaluation =>
+                      reportNumber(
+                        evaluation.peso_kg
+                      )
+                  ),
+
+                tension:.3,
+
+                fill:false
+              }
+            ]
+          },
+
+          options:{
+            responsive:true,
+            maintainAspectRatio:false,
+
+            plugins:{
+              legend:{
+                display:true
+              }
+            },
+
+            scales:{
+              y:{
+                beginAtZero:false
+              }
+            }
+          }
+        }
+      );
+
+  }
+
+  /* ---------------------------------------------------------
+     GRÁFICO DE COMPOSIÇÃO
+     --------------------------------------------------------- */
+
+  function renderCompositionChart() {
+
+    const canvas =
+      $("reportCompositionChart");
+
+    if (
+      !canvas ||
+      typeof Chart === "undefined"
+    ) {
+      return;
+    }
+
+    if (reportCompositionChart) {
+      reportCompositionChart.destroy();
+    }
+
+    const valid =
+      reportEvaluationCache;
+
+    reportCompositionChart =
+      new Chart(
+        canvas,
+        {
+          type:"line",
+
+          data:{
+            labels:
+              valid.map(
+                evaluation =>
+                  formatReportDate(
+                    evaluation.avaliado_em
+                  )
+              ),
+
+            datasets:[
+              {
+                label:"Gordura (%)",
+
+                data:
+                  valid.map(
+                    evaluation =>
+                      reportNumber(
+                        evaluation.gordura_percent
+                      )
+                  ),
+
+                tension:.3,
+
+                spanGaps:true
+              },
+
+              {
+                label:"Massa muscular (kg)",
+
+                data:
+                  valid.map(
+                    evaluation =>
+                      reportNumber(
+                        evaluation.massa_muscular_kg
+                      )
+                  ),
+
+                tension:.3,
+
+                spanGaps:true
+              }
+            ]
+          },
+
+          options:{
+            responsive:true,
+            maintainAspectRatio:false,
+
+            plugins:{
+              legend:{
+                display:true
+              }
+            },
+
+            scales:{
+              y:{
+                beginAtZero:false
+              }
+            }
+          }
+        }
+      );
+
+  }
+
+  /* ---------------------------------------------------------
+     GRÁFICO DE MEDIDAS
+     --------------------------------------------------------- */
+
+  function renderCircumferenceChart() {
+
+    const canvas =
+      $("reportCircumferenceChart");
+
+    const select =
+      $("reportCircumferenceMetric");
+
+    if (
+      !canvas ||
+      !select ||
+      typeof Chart === "undefined"
+    ) {
+      return;
+    }
+
+    if (reportCircumferenceChart) {
+      reportCircumferenceChart.destroy();
+    }
+
+    const metric =
+      select.value ||
+      "cintura";
+
+    const valid =
+      reportEvaluationCache.map(
+        evaluation => {
+
+          const measure =
+            getMeasuresForEvaluation(
+              evaluation.id
+            );
+
+          return {
+            date:
+              formatReportDate(
+                evaluation.avaliado_em
+              ),
+
+            value:
+              reportNumber(
+                measure[metric]
+              )
+          };
+
+        }
+      );
+
+    reportCircumferenceChart =
+      new Chart(
+        canvas,
+        {
+          type:"line",
+
+          data:{
+            labels:
+              valid.map(
+                item => item.date
+              ),
+
+            datasets:[
+              {
+                label:
+                  `${circumferenceMetrics[metric] || metric} (cm)`,
+
+                data:
+                  valid.map(
+                    item => item.value
+                  ),
+
+                tension:.3,
+
+                spanGaps:true
+              }
+            ]
+          },
+
+          options:{
+            responsive:true,
+            maintainAspectRatio:false,
+
+            plugins:{
+              legend:{
+                display:true
+              }
+            },
+
+            scales:{
+              y:{
+                beginAtZero:false
+              }
+            }
+          }
+        }
+      );
+
+  }
+
+  /* ---------------------------------------------------------
+     TABELA DE EVOLUÇÃO
+     --------------------------------------------------------- */
+
+  function renderEvolutionTable() {
+
+    const container =
+      $("reportEvolutionTable");
+
+    if (!container) return;
+
+    if (
+      !reportEvaluationCache.length
+    ) {
+
+      renderReportEmpty(
+        "Nenhuma avaliação cadastrada para este aluno."
+      );
+
+      return;
+
+    }
+
+    const rows =
+      reportEvaluationCache
+        .map(
+          evaluation => {
+
+            const measure =
+              getMeasuresForEvaluation(
+                evaluation.id
+              );
+
+            return `
+              <tr>
+
+                <td>
+                  <strong>
+                    ${esc(
+                      formatReportDate(
+                        evaluation.avaliado_em
+                      )
+                    )}
+                  </strong>
+                </td>
+
+                <td>
+                  ${evaluation.peso_kg ?? "—"} kg
+                </td>
+
+                <td>
+                  ${evaluation.gordura_percent ?? "—"}%
+                </td>
+
+                <td>
+                  ${evaluation.massa_muscular_kg ?? "—"} kg
+                </td>
+
+                <td>
+                  ${measure.cintura ?? "—"} cm
+                </td>
+
+                <td>
+                  ${measure.abdomen ?? "—"} cm
+                </td>
+
+                <td>
+                  ${measure.quadril ?? "—"} cm
+                </td>
+
+                <td>
+                  ${measure.braco_direito ?? "—"} cm
+                </td>
+
+                <td>
+                  ${measure.coxa_direita ?? "—"} cm
+                </td>
+
+              </tr>
+            `;
+
+          }
+        )
+        .join("");
+
+    container.innerHTML = `
+
+      <table class="table">
+
+        <thead>
+
+          <tr>
+
+            <th>Data</th>
+
+            <th>Peso</th>
+
+            <th>Gordura</th>
+
+            <th>Massa muscular</th>
+
+            <th>Cintura</th>
+
+            <th>Abdômen</th>
+
+            <th>Quadril</th>
+
+            <th>Braço</th>
+
+            <th>Coxa</th>
+
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+          ${rows}
+
+        </tbody>
+
+      </table>
+
+    `;
+
+  }
+
+  /* ---------------------------------------------------------
+     INICIALIZAÇÃO
+     --------------------------------------------------------- */
+
+  async function loadReportsPage() {
+
+    buildReportsInterface();
+
+    loadReportStudents();
+
+  }
+
+  window.loadReportsPage =
+    loadReportsPage;
+window.thmReportData = {
+
+  get evaluations() {
+    return reportEvaluationCache;
+  },
+
+  get measures() {
+    return reportMeasuresCache;
+  }
+
+};
+  /* ---------------------------------------------------------
+     INTEGRAR COM goTo()
+     --------------------------------------------------------- */
+
+  const originalGoToReports =
+    window.goTo;
+
+  if (
+    typeof originalGoToReports ===
+      "function" &&
+    !window.__thmReportsGoToInstalled
+  ) {
+
+    window.__thmReportsGoToInstalled =
+      true;
+
+    window.goTo =
+      function(page) {
+
+        const result =
+          originalGoToReports.apply(
+            this,
+            arguments
+          );
+
+        if (
+          page === "relatorios"
+        ) {
+
+          setTimeout(
+            () => {
+              loadReportsPage();
+            },
+            0
+          );
+
+        }
+
+        return result;
+
+      };
+
+  }
+
+  /* ---------------------------------------------------------
+     CRIAR A PÁGINA ANTES DO PRIMEIRO CLIQUE
+     --------------------------------------------------------- */
+
+  ensureReportsPage();
+
+})();
+
+/* =========================================================
+   THM FIT - ANÁLISE AUTOMÁTICA DA EVOLUÇÃO
+   ========================================================= */
+
+(() => {
+
+  let analysisTimer = null;
+
+  function createAnalysisArea() {
+
+    const charts =
+      $("reportCharts");
+
+    if (!charts) return null;
+
+    let area =
+      $("reportAutomaticAnalysis");
+
+    if (area) return area;
+
+    area =
+      document.createElement("div");
+
+    area.id =
+      "reportAutomaticAnalysis";
+
+    area.style.cssText = `
+      margin-bottom:20px;
+      border:1px solid #e5e7eb;
+      border-radius:14px;
+      padding:20px;
+      background:var(--card-bg,#fff);
+    `;
+
+    charts.parentNode.insertBefore(
+      area,
+      charts.nextSibling
+    );
+
+    return area;
+
+  }
+
+  function number(value) {
+
+    const n =
+      Number(value);
+
+    return Number.isFinite(n)
+      ? n
+      : null;
+
+  }
+
+  function date(value) {
+
+    if (!value) return null;
+
+    const d =
+      new Date(
+        String(value).includes("T")
+          ? value
+          : `${value}T00:00:00`
+      );
+
+    return Number.isNaN(
+      d.getTime()
+    )
+      ? null
+      : d;
+
+  }
+
+  function dateText(value) {
+
+    const d =
+      date(value);
+
+    return d
+      ? d.toLocaleDateString("pt-BR")
+      : "—";
+
+  }
+
+  function difference(
+    initial,
+    current
+  ) {
+
+    const a =
+      number(initial);
+
+    const b =
+      number(current);
+
+    if (
+      a === null ||
+      b === null
+    ) {
+      return null;
+    }
+
+    return b - a;
+
+  }
+
+  function variationText(
+    initial,
+    current,
+    unit
+  ) {
+
+    const diff =
+      difference(
+        initial,
+        current
+      );
+
+    if (diff === null) {
+      return "Sem dados suficientes";
+    }
+
+    const signal =
+      diff > 0
+        ? "+"
+        : "";
+
+    return `${signal}${diff.toFixed(1)} ${unit}`;
+
+  }
+
+  function statusClass(
+    type,
+    diff
+  ) {
+
+    if (
+      diff === null ||
+      Math.abs(diff) < 0.1
+    ) {
+      return "neutral";
+    }
+
+    /*
+      Para gordura:
+      diminuir = positivo
+
+      Para cintura/abdômen:
+      diminuir = positivo
+
+      Para massa muscular:
+      aumentar = positivo
+
+      Para peso:
+      neutro, pois depende do objetivo.
+    */
+
+    if (
+      type === "fat" ||
+      type === "circumference"
+    ) {
+
+      return diff < 0
+        ? "positive"
+        : "attention";
+
+    }
+
+    if (
+      type === "muscle"
+    ) {
+
+      return diff > 0
+        ? "positive"
+        : "attention";
+
+    }
+
+    return "neutral";
+
+  }
+
+  function labelStatus(
+    type,
+    diff
+  ) {
+
+    const cls =
+      statusClass(
+        type,
+        diff
+      );
+
+    if (cls === "positive") {
+      return "Evolução positiva";
+    }
+
+    if (cls === "attention") {
+      return "Acompanhar";
+    }
+
+    return "Estável";
+
+  }
+
+  function metricCard(
+    title,
+    initial,
+    current,
+    unit,
+    type
+  ) {
+
+    const diff =
+      difference(
+        initial,
+        current
+      );
+
+    const initialText =
+      initial !== null
+        ? `${initial.toFixed(1)} ${unit}`
+        : "—";
+
+    const currentText =
+      current !== null
+        ? `${current.toFixed(1)} ${unit}`
+        : "—";
+
+    const variation =
+      diff !== null
+        ? `${diff > 0 ? "+" : ""}${diff.toFixed(1)} ${unit}`
+        : "—";
+
+    const cls =
+      statusClass(
+        type,
+        diff
+      );
+
+    const status =
+      labelStatus(
+        type,
+        diff
+      );
+
+    return `
+
+      <div style="
+        border:1px solid #e5e7eb;
+        border-radius:12px;
+        padding:16px;
+      ">
+
+        <div style="
+          font-size:13px;
+          opacity:.7;
+          margin-bottom:8px;
+        ">
+          ${esc(title)}
+        </div>
+
+        <div style="
+          display:flex;
+          justify-content:space-between;
+          gap:12px;
+          margin-bottom:10px;
+        ">
+
+          <div>
+            <div style="
+              font-size:11px;
+              opacity:.6;
+            ">
+              Inicial
+            </div>
+
+            <strong>
+              ${initialText}
+            </strong>
+          </div>
+
+          <div style="
+            text-align:right;
+          ">
+            <div style="
+              font-size:11px;
+              opacity:.6;
+            ">
+              Atual
+            </div>
+
+            <strong>
+              ${currentText}
+            </strong>
+          </div>
+
+        </div>
+
+        <div style="
+          font-size:15px;
+          font-weight:700;
+          margin-bottom:5px;
+        ">
+          ${variation}
+        </div>
+
+        <div style="
+          font-size:12px;
+          font-weight:600;
+          opacity:.75;
+        ">
+          ${status}
+        </div>
+
+      </div>
+
+    `;
+
+  }
+
+  async function loadAutomaticAnalysis() {
+
+    const select =
+      $("reportStudent");
+
+    if (!select) return;
+
+    const studentId =
+      select.value;
+
+    const area =
+      createAnalysisArea();
+
+    if (!area) return;
+
+    if (!studentId) {
+
+      area.innerHTML = `
+        <h3 style="margin:0 0 8px 0;">
+          Análise da evolução
+        </h3>
+
+        <p style="margin:0;opacity:.7;">
+          Selecione um aluno para gerar a análise automática.
+        </p>
+      `;
+
+      return;
+
+    }
+
+    area.innerHTML = `
+      <h3 style="margin:0 0 8px 0;">
+        Análise da evolução
+      </h3>
+
+      <p style="margin:0;opacity:.7;">
+        Analisando as avaliações do aluno...
+      </p>
+    `;
+
+    let evaluations = [];
+    let measures = [];
+
+    /* -------------------------------------------------------
+       DEMO
+       ------------------------------------------------------- */
+
+    if (demoMode) {
+
+      const cache =
+        JSON.parse(
+          localStorage.getItem(
+            "thm_demo_avaliacoes"
+          ) || "[]"
+        );
+
+      evaluations =
+        cache
+          .filter(
+            item =>
+              String(item.aluno_id) ===
+              String(studentId)
+          )
+          .sort(
+            (a,b) =>
+              String(a.avaliado_em)
+                .localeCompare(
+                  String(b.avaliado_em)
+                )
+          );
+
+      measures =
+        evaluations.map(
+          item => ({
+            avaliacao_id:
+              item.id,
+            ...(item.medidas_corporais || {})
+          })
+        );
+
+    }
+
+    /* -------------------------------------------------------
+       SUPABASE
+       ------------------------------------------------------- */
+
+    else {
+
+      const evaluationResult =
+        await client
+          .from("avaliacoes")
+          .select(`
+            id,
+            aluno_id,
+            avaliado_em,
+            peso_kg,
+            gordura_percent,
+            massa_muscular_kg,
+            agua_percent
+          `)
+          .eq(
+            "aluno_id",
+            studentId
+          )
+          .order(
+            "avaliado_em",
+            {
+              ascending:true
+            }
+          );
+
+      if (
+        evaluationResult.error
+      ) {
+
+        console.error(
+          "Erro na análise das avaliações:",
+          evaluationResult.error
+        );
+
+        area.innerHTML = `
+          <h3 style="margin:0 0 8px 0;">
+            Análise da evolução
+          </h3>
+
+          <p style="margin:0;">
+            Não foi possível carregar a análise.
+          </p>
+        `;
+
+        return;
+
+      }
+
+      evaluations =
+        evaluationResult.data || [];
+
+      if (evaluations.length) {
+
+        const ids =
+          evaluations.map(
+            item => item.id
+          );
+
+        const measuresResult =
+          await client
+            .from("medidas_corporais")
+            .select("*")
+            .in(
+              "avaliacao_id",
+              ids
+            );
+
+        measures =
+          measuresResult.data || [];
+
+      }
+
+    }
+
+    if (
+      evaluations.length < 1
+    ) {
+
+      area.innerHTML = `
+        <h3 style="margin:0 0 8px 0;">
+          Análise da evolução
+        </h3>
+
+        <p style="margin:0;opacity:.7;">
+          Este aluno ainda não possui avaliações suficientes.
+        </p>
+      `;
+
+      return;
+
+    }
+
+    const first =
+      evaluations[0];
+
+    const last =
+      evaluations[
+        evaluations.length - 1
+      ];
+
+    const firstMeasures =
+      measures.find(
+        item =>
+          String(item.avaliacao_id) ===
+          String(first.id)
+      ) || {};
+
+    const lastMeasures =
+      measures.find(
+        item =>
+          String(item.avaliacao_id) ===
+          String(last.id)
+      ) || {};
+
+    const firstWeight =
+      number(first.peso_kg);
+
+    const lastWeight =
+      number(last.peso_kg);
+
+    const firstFat =
+      number(first.gordura_percent);
+
+    const lastFat =
+      number(last.gordura_percent);
+
+    const firstMuscle =
+      number(first.massa_muscular_kg);
+
+    const lastMuscle =
+      number(last.massa_muscular_kg);
+
+    const firstWaist =
+      number(firstMeasures.cintura);
+
+    const lastWaist =
+      number(lastMeasures.cintura);
+
+    const firstAbdomen =
+      number(firstMeasures.abdomen);
+
+    const lastAbdomen =
+      number(lastMeasures.abdomen);
+
+    const firstHip =
+      number(firstMeasures.quadril);
+
+    const lastHip =
+      number(lastMeasures.quadril);
+
+    const firstArm =
+      number(firstMeasures.braco_direito);
+
+    const lastArm =
+      number(lastMeasures.braco_direito);
+
+    const firstThigh =
+      number(firstMeasures.coxa_direita);
+
+    const lastThigh =
+      number(lastMeasures.coxa_direita);
+
+    /* -------------------------------------------------------
+       DIAS ENTRE AVALIAÇÕES
+       ------------------------------------------------------- */
+
+    const firstDate =
+      date(first.avaliado_em);
+
+    const lastDate =
+      date(last.avaliado_em);
+
+    let daysBetween = 0;
+
+    if (
+      firstDate &&
+      lastDate
+    ) {
+
+      daysBetween =
+        Math.max(
+          0,
+          Math.round(
+            (
+              lastDate -
+              firstDate
+            ) /
+            86400000
+          )
+        );
+
+    }
+
+    /* -------------------------------------------------------
+       MENSAGENS
+       ------------------------------------------------------- */
+
+    const observations = [];
+
+    const fatDiff =
+      difference(
+        firstFat,
+        lastFat
+      );
+
+    if (
+      fatDiff !== null
+    ) {
+
+      if (fatDiff < -0.1) {
+
+        observations.push(`
+          A gordura corporal apresentou
+          <strong>redução de ${Math.abs(fatDiff).toFixed(1)} ponto(s) percentuais</strong>.
+        `);
+
+      } else if (
+        fatDiff > 0.1
+      ) {
+
+        observations.push(`
+          A gordura corporal apresentou
+          <strong>aumento de ${fatDiff.toFixed(1)} ponto(s) percentuais</strong>.
+        `);
+
+      } else {
+
+        observations.push(`
+          A gordura corporal permaneceu
+          <strong>praticamente estável</strong>.
+        `);
+
+      }
+
+    }
+
+    const muscleDiff =
+      difference(
+        firstMuscle,
+        lastMuscle
+      );
+
+    if (
+      muscleDiff !== null
+    ) {
+
+      if (muscleDiff > 0.1) {
+
+        observations.push(`
+          A massa muscular apresentou
+          <strong>aumento de ${muscleDiff.toFixed(1)} kg</strong>.
+        `);
+
+      } else if (
+        muscleDiff < -0.1
+      ) {
+
+        observations.push(`
+          A massa muscular apresentou
+          <strong>redução de ${Math.abs(muscleDiff).toFixed(1)} kg</strong>,
+          sendo um ponto que merece acompanhamento.
+        `);
+
+      } else {
+
+        observations.push(`
+          A massa muscular permaneceu
+          <strong>praticamente estável</strong>.
+        `);
+
+      }
+
+    }
+
+    const waistDiff =
+      difference(
+        firstWaist,
+        lastWaist
+      );
+
+    if (
+      waistDiff !== null
+    ) {
+
+      if (waistDiff < -0.1) {
+
+        observations.push(`
+          A cintura apresentou
+          <strong>redução de ${Math.abs(waistDiff).toFixed(1)} cm</strong>.
+        `);
+
+      } else if (
+        waistDiff > 0.1
+      ) {
+
+        observations.push(`
+          A cintura apresentou
+          <strong>aumento de ${waistDiff.toFixed(1)} cm</strong>.
+        `);
+
+      }
+
+    }
+
+    const abdomenDiff =
+      difference(
+        firstAbdomen,
+        lastAbdomen
+      );
+
+    if (
+      abdomenDiff !== null &&
+      abdomenDiff < -0.1
+    ) {
+
+      observations.push(`
+        O abdômen apresentou
+        <strong>redução de ${Math.abs(abdomenDiff).toFixed(1)} cm</strong>.
+      `);
+
+    }
+
+    /* -------------------------------------------------------
+       CARDS
+       ------------------------------------------------------- */
+
+    const cards = [
+
+      metricCard(
+        "Peso",
+        firstWeight,
+        lastWeight,
+        "kg",
+        "weight"
+      ),
+
+      metricCard(
+        "Gordura corporal",
+        firstFat,
+        lastFat,
+        "%",
+        "fat"
+      ),
+
+      metricCard(
+        "Massa muscular",
+        firstMuscle,
+        lastMuscle,
+        "kg",
+        "muscle"
+      ),
+
+      metricCard(
+        "Cintura",
+        firstWaist,
+        lastWaist,
+        "cm",
+        "circumference"
+      ),
+
+      metricCard(
+        "Abdômen",
+        firstAbdomen,
+        lastAbdomen,
+        "cm",
+        "circumference"
+      ),
+
+      metricCard(
+        "Quadril",
+        firstHip,
+        lastHip,
+        "cm",
+        "circumference"
+      ),
+
+      metricCard(
+        "Braço direito",
+        firstArm,
+        lastArm,
+        "cm",
+        "circumference"
+      ),
+
+      metricCard(
+        "Coxa direita",
+        firstThigh,
+        lastThigh,
+        "cm",
+        "circumference"
+      )
+
+    ];
+
+    area.innerHTML = `
+
+      <div style="
+        display:flex;
+        justify-content:space-between;
+        align-items:flex-start;
+        gap:15px;
+        flex-wrap:wrap;
+        margin-bottom:18px;
+      ">
+
+        <div>
+
+          <h3 style="
+            margin:0 0 6px 0;
+          ">
+            Análise da evolução
+          </h3>
+
+          <p style="
+            margin:0;
+            opacity:.7;
+          ">
+            Comparação entre a primeira e a última avaliação.
+          </p>
+
+        </div>
+
+        <div style="
+          font-size:13px;
+          opacity:.7;
+          text-align:right;
+        ">
+
+          ${evaluations.length}
+          avaliação(ões)
+
+          <br>
+
+          Período:
+          ${dateText(first.avaliado_em)}
+          →
+          ${dateText(last.avaliado_em)}
+
+          ${
+            daysBetween
+              ? `<br>${daysBetween} dia(s)`
+              : ""
+          }
+
+        </div>
+
+      </div>
+
+      <div style="
+        display:grid;
+        grid-template-columns:
+          repeat(4,minmax(0,1fr));
+        gap:12px;
+        margin-bottom:20px;
+      ">
+
+        ${cards.join("")}
+
+      </div>
+
+      <div style="
+        border-top:1px solid #e5e7eb;
+        padding-top:18px;
+      ">
+
+        <h4 style="
+          margin:0 0 12px 0;
+        ">
+          Resumo automático
+        </h4>
+
+        ${
+          observations.length
+            ? `
+              <div style="
+                display:flex;
+                flex-direction:column;
+                gap:9px;
+                line-height:1.5;
+              ">
+
+                ${observations
+                  .map(
+                    text => `
+                      <div>
+                        • ${text}
+                      </div>
+                    `
+                  )
+                  .join("")}
+
+              </div>
+            `
+            : `
+              <p style="
+                margin:0;
+                opacity:.7;
+              ">
+                Ainda não há dados suficientes para gerar
+                observações detalhadas.
+              </p>
+            `
+        }
+
+      </div>
+
+      <div style="
+        margin-top:16px;
+        padding:12px 14px;
+        border-radius:10px;
+        background:rgba(0,0,0,.035);
+        font-size:12px;
+        opacity:.7;
+      ">
+        A análise é baseada na comparação dos dados registrados
+        nas avaliações e serve como apoio ao acompanhamento
+        da evolução do aluno.
+      </div>
+
+    `;
+
+  }
+
+  function scheduleAnalysis() {
+
+    clearTimeout(
+      analysisTimer
+    );
+
+    analysisTimer =
+      setTimeout(
+        () => {
+          loadAutomaticAnalysis();
+        },
+        300
+      );
+
+  }
+
+  /* -------------------------------------------------------
+     OBSERVAR SELEÇÃO DO ALUNO
+     ------------------------------------------------------- */
+
+  document.addEventListener(
+    "change",
+    event => {
+
+      if (
+        event.target &&
+        event.target.id ===
+          "reportStudent"
+      ) {
+
+        scheduleAnalysis();
+
+      }
+
+    }
+  );
+
+  /* -------------------------------------------------------
+     QUANDO RELATÓRIOS FOR ABERTO
+     ------------------------------------------------------- */
+
+  const originalGoTo =
+    window.goTo;
+
+  if (
+    typeof originalGoTo ===
+      "function" &&
+    !window.__thmAutomaticAnalysis
+  ) {
+
+    window.__thmAutomaticAnalysis =
+      true;
+
+    window.goTo =
+      function(page) {
+
+        const result =
+          originalGoTo.apply(
+            this,
+            arguments
+          );
+
+        if (
+          page === "relatorios"
+        ) {
+
+          setTimeout(
+            () => {
+
+              createAnalysisArea();
+
+              if (
+                $("reportStudent")?.value
+              ) {
+                loadAutomaticAnalysis();
+              }
+
+            },
+            100
+          );
+
+        }
+
+        return result;
+
+      };
+
+  }
+
+})();
+
+/* =========================================================
+   THM FIT - RELATÓRIO INDIVIDUAL
+   ========================================================= */
+
+(() => {
+
+  function getSelectedStudent() {
+
+    const select =
+      $("reportStudent");
+
+    if (!select?.value) {
+      return null;
+    }
+
+    return Array.isArray(studentsCache)
+      ? studentsCache.find(
+          student =>
+            String(student.id) ===
+            String(select.value)
+        )
+      : null;
+
+  }
+
+function createStudentReportWindow() {
+
+  const student =
+    getSelectedStudent();
+
+  if (!student) {
+
+    toast(
+      "Selecione um aluno primeiro.",
+      true
+    );
+
+    return;
+
+  }
+
+  const evaluations =
+    window.thmReportData?.evaluations || [];
+
+  const measures =
+    window.thmReportData?.measures || [];
+
+  if (!evaluations.length) {
+
+    toast(
+      "Este aluno ainda não possui avaliações.",
+      true
+    );
+
+    return;
+
+  }
+
+  const first =
+    evaluations[0];
+
+  const last =
+    evaluations[
+      evaluations.length - 1
+    ];
+
+  const firstMeasures =
+    measures.find(
+      item =>
+        String(item.avaliacao_id) ===
+        String(first.id)
+    ) || {};
+
+  const lastMeasures =
+    measures.find(
+      item =>
+        String(item.avaliacao_id) ===
+        String(last.id)
+    ) || {};
+
+  const formatNumber =
+    value => {
+
+      const n =
+        Number(value);
+
+      return Number.isFinite(n)
+        ? n.toFixed(1)
+        : "—";
+
+    };
+
+  const formatDate =
+    value => {
+
+      if (!value) {
+        return "—";
+      }
+
+      const date =
+        new Date(
+          String(value).includes("T")
+            ? value
+            : `${value}T00:00:00`
+        );
+
+      return Number.isNaN(
+        date.getTime()
+      )
+        ? String(value)
+        : date.toLocaleDateString(
+            "pt-BR"
+          );
+
+    };
+
+  const difference =
+    (
+      initial,
+      current
+    ) => {
+
+      const a =
+        Number(initial);
+
+      const b =
+        Number(current);
+
+      if (
+        !Number.isFinite(a) ||
+        !Number.isFinite(b)
+      ) {
+        return "—";
+      }
+
+      const diff =
+        b - a;
+
+      return `${
+        diff > 0 ? "+" : ""
+      }${diff.toFixed(1)}`;
+
+    };
+
+
+  /* =========================================================
+     DADOS DOS GRÁFICOS
+     ========================================================= */
+
+  const chartData =
+    evaluations
+      .map(
+        evaluation => ({
+
+          date:
+            formatDate(
+              evaluation.avaliado_em
+            ),
+
+          peso:
+            Number(
+              evaluation.peso_kg
+            ),
+
+          gordura:
+            Number(
+              evaluation.gordura_percent
+            ),
+
+          massaMuscular:
+            Number(
+              evaluation.massa_muscular_kg
+            )
+
+        })
+      )
+      .filter(
+        item =>
+          Number.isFinite(item.peso) ||
+          Number.isFinite(item.gordura) ||
+          Number.isFinite(
+            item.massaMuscular
+          )
+      );
+
+
+  const chartLabels =
+    JSON.stringify(
+      chartData.map(
+        item => item.date
+      )
+    );
+
+
+  const weightData =
+    JSON.stringify(
+      chartData.map(
+        item =>
+          Number.isFinite(
+            item.peso
+          )
+            ? item.peso
+            : null
+      )
+    );
+
+
+  const fatData =
+    JSON.stringify(
+      chartData.map(
+        item =>
+          Number.isFinite(
+            item.gordura
+          )
+            ? item.gordura
+            : null
+      )
+    );
+
+
+  const muscleData =
+    JSON.stringify(
+      chartData.map(
+        item =>
+          Number.isFinite(
+            item.massaMuscular
+          )
+            ? item.massaMuscular
+            : null
+      )
+    );
+
+
+  /* =========================================================
+     MEDIDAS CORPORAIS
+     ========================================================= */
+
+  const measureRows = [
+
+    [
+      "Pescoço",
+      firstMeasures.pescoco,
+      lastMeasures.pescoco
+    ],
+
+    [
+      "Ombros",
+      firstMeasures.ombros,
+      lastMeasures.ombros
+    ],
+
+    [
+      "Peitoral",
+      firstMeasures.peitoral,
+      lastMeasures.peitoral
+    ],
+
+    [
+      "Cintura",
+      firstMeasures.cintura,
+      lastMeasures.cintura
+    ],
+
+    [
+      "Abdômen",
+      firstMeasures.abdomen,
+      lastMeasures.abdomen
+    ],
+
+    [
+      "Quadril",
+      firstMeasures.quadril,
+      lastMeasures.quadril
+    ],
+
+    [
+      "Braço direito",
+      firstMeasures.braco_direito,
+      lastMeasures.braco_direito
+    ],
+
+    [
+      "Braço esquerdo",
+      firstMeasures.braco_esquerdo,
+      lastMeasures.braco_esquerdo
+    ],
+
+    [
+      "Antebraço direito",
+      firstMeasures.antebraco_direito,
+      lastMeasures.antebraco_direito
+    ],
+
+    [
+      "Antebraço esquerdo",
+      firstMeasures.antebraco_esquerdo,
+      lastMeasures.antebraco_esquerdo
+    ],
+
+    [
+      "Coxa direita",
+      firstMeasures.coxa_direita,
+      lastMeasures.coxa_direita
+    ],
+
+    [
+      "Coxa esquerda",
+      firstMeasures.coxa_esquerda,
+      lastMeasures.coxa_esquerda
+    ],
+
+    [
+      "Panturrilha direita",
+      firstMeasures.panturrilha_direita,
+      lastMeasures.panturrilha_direita
+    ],
+
+    [
+      "Panturrilha esquerda",
+      firstMeasures.panturrilha_esquerda,
+      lastMeasures.panturrilha_esquerda
+    ]
+
+  ];
+
+
+  /* =========================================================
+     ABRIR RELATÓRIO
+     ========================================================= */
+
+  const reportWindow =
+    window.open(
+      "",
+      "_blank"
+    );
+
+  if (!reportWindow) {
+
+    toast(
+      "O navegador bloqueou a abertura do relatório.",
+      true
+    );
+
+    return;
+
+  }
+
+
+  reportWindow.document.write(`
+
+<!DOCTYPE html>
+
+<html lang="pt-BR">
+
+<head>
+
+<meta charset="UTF-8">
+
+<title>
+THM FIT - Relatório de Evolução
+</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+
+* {
+  box-sizing:border-box;
+}
+
+body {
+
+  margin:0;
+
+  padding:35px;
+
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
+
+  color:#222;
+
+  background:#f5f6f8;
+
+}
+
+.container {
+
+  max-width:1000px;
+
+  margin:auto;
+
+  background:#fff;
+
+  padding:40px;
+
+  border-radius:16px;
+
+}
+
+.header {
+
+  display:flex;
+
+  justify-content:space-between;
+
+  align-items:flex-start;
+
+  gap:20px;
+
+  border-bottom:2px solid #222;
+
+  padding-bottom:20px;
+
+  margin-bottom:25px;
+
+}
+
+.logo {
+
+  font-size:30px;
+
+  font-weight:800;
+
+}
+
+.subtitle {
+
+  margin-top:5px;
+
+  color:#666;
+
+}
+
+.info {
+
+  text-align:right;
+
+  font-size:13px;
+
+  color:#666;
+
+}
+
+.student {
+
+  padding:20px;
+
+  border:1px solid #ddd;
+
+  border-radius:12px;
+
+  margin-bottom:25px;
+
+}
+
+.student h2 {
+
+  margin:0 0 8px;
+
+}
+
+.period {
+
+  color:#666;
+
+}
+
+h3 {
+
+  margin-top:30px;
+
+  border-bottom:1px solid #ddd;
+
+  padding-bottom:8px;
+
+}
+
+.cards {
+
+  display:grid;
+
+  grid-template-columns:
+    repeat(4,1fr);
+
+  gap:12px;
+
+}
+
+.card {
+
+  border:1px solid #ddd;
+
+  border-radius:10px;
+
+  padding:15px;
+
+}
+
+.card-title {
+
+  font-size:12px;
+
+  color:#777;
+
+}
+
+.card-value {
+
+  font-size:22px;
+
+  font-weight:bold;
+
+  margin:7px 0;
+
+}
+
+.card-change {
+
+  font-size:12px;
+
+  color:#666;
+
+}
+
+
+/* =========================================================
+   GRÁFICOS
+   ========================================================= */
+
+.charts {
+
+  display:grid;
+
+  grid-template-columns:
+    repeat(2, 1fr);
+
+  gap:20px;
+
+  margin-top:15px;
+
+}
+
+.chart-box {
+
+  border:1px solid #ddd;
+
+  border-radius:12px;
+
+  padding:15px;
+
+  background:#fff;
+
+}
+
+.chart-box h4 {
+
+  margin:0 0 10px;
+
+  font-size:15px;
+
+}
+
+.chart-container {
+
+  position:relative;
+
+  height:260px;
+
+}
+
+
+table {
+
+  width:100%;
+
+  border-collapse:collapse;
+
+  margin-top:15px;
+
+}
+
+th,
+td {
+
+  border:1px solid #ddd;
+
+  padding:9px;
+
+  text-align:left;
+
+}
+
+th {
+
+  background:#f0f0f0;
+
+}
+
+.summary {
+
+  border:1px solid #ddd;
+
+  border-radius:10px;
+
+  padding:18px;
+
+  line-height:1.6;
+
+}
+
+.footer {
+
+  margin-top:35px;
+
+  padding-top:15px;
+
+  border-top:1px solid #ddd;
+
+  font-size:11px;
+
+  color:#777;
+
+  text-align:center;
+
+}
+
+.print {
+
+  position:fixed;
+
+  top:20px;
+
+  right:20px;
+
+  padding:10px 18px;
+
+  border:0;
+
+  border-radius:8px;
+
+  cursor:pointer;
+
+  background:#222;
+
+  color:white;
+
+}
+
+@media print {
+
+  body {
+
+    background:white;
+
+    padding:0;
+
+  }
+
+  .container {
+
+    max-width:none;
+
+    border-radius:0;
+
+  }
+
+  .print {
+
+    display:none;
+
+  }
+
+  .chart-box {
+
+    break-inside:avoid;
+
+  }
+
+}
+
+</style>
+
+</head>
+
+<body>
+
+<button
+  class="print"
+  onclick="window.print()"
+>
+  🖨️ Imprimir / PDF
+</button>
+
+
+<div class="container">
+
+
+  <!-- CABEÇALHO -->
+
+  <div class="header">
+
+    <div>
+
+      <div class="logo">
+        THM FIT
+      </div>
+
+      <div class="subtitle">
+        Relatório de evolução corporal
+      </div>
+
+    </div>
+
+    <div class="info">
+
+      Gerado em
+      ${new Date().toLocaleDateString("pt-BR")}
+
+    </div>
+
+  </div>
+
+
+  <!-- ALUNO -->
+
+  <div class="student">
+
+    <h2>
+
+      ${
+        typeof esc === "function"
+          ? esc(
+              student.nome ||
+              student.nome_completo ||
+              "Aluno"
+            )
+          :
+            (
+              student.nome ||
+              student.nome_completo ||
+              "Aluno"
+            )
+      }
+
+    </h2>
+
+    <div class="period">
+
+      Período analisado:
+
+      ${formatDate(
+        first.avaliado_em
+      )}
+
+      →
+
+      ${formatDate(
+        last.avaliado_em
+      )}
+
+    </div>
+
+  </div>
+
+
+  <!-- COMPOSIÇÃO CORPORAL -->
+
+  <h3>
+    Composição corporal
+  </h3>
+
+
+  <div class="cards">
+
+
+    <div class="card">
+
+      <div class="card-title">
+        Peso inicial
+      </div>
+
+      <div class="card-value">
+
+        ${formatNumber(
+          first.peso_kg
+        )}
+        kg
+
+      </div>
+
+      <div class="card-change">
+
+        Atual:
+        ${formatNumber(
+          last.peso_kg
+        )}
+        kg
+
+        <br>
+
+        Variação:
+        ${difference(
+          first.peso_kg,
+          last.peso_kg
+        )}
+        kg
+
+      </div>
+
+    </div>
+
+
+    <div class="card">
+
+      <div class="card-title">
+        Gordura corporal
+      </div>
+
+      <div class="card-value">
+
+        ${formatNumber(
+          first.gordura_percent
+        )}
+        %
+
+      </div>
+
+      <div class="card-change">
+
+        Atual:
+        ${formatNumber(
+          last.gordura_percent
+        )}
+        %
+
+        <br>
+
+        Variação:
+        ${difference(
+          first.gordura_percent,
+          last.gordura_percent
+        )}
+        p.p.
+
+      </div>
+
+    </div>
+
+
+    <div class="card">
+
+      <div class="card-title">
+        Massa muscular
+      </div>
+
+      <div class="card-value">
+
+        ${formatNumber(
+          first.massa_muscular_kg
+        )}
+        kg
+
+      </div>
+
+      <div class="card-change">
+
+        Atual:
+        ${formatNumber(
+          last.massa_muscular_kg
+        )}
+        kg
+
+        <br>
+
+        Variação:
+        ${difference(
+          first.massa_muscular_kg,
+          last.massa_muscular_kg
+        )}
+        kg
+
+      </div>
+
+    </div>
+
+
+    <div class="card">
+
+      <div class="card-title">
+        Água corporal
+      </div>
+
+      <div class="card-value">
+
+        ${formatNumber(
+          first.agua_percent
+        )}
+        %
+
+      </div>
+
+      <div class="card-change">
+
+        Atual:
+        ${formatNumber(
+          last.agua_percent
+        )}
+        %
+
+        <br>
+
+        Variação:
+        ${difference(
+          first.agua_percent,
+          last.agua_percent
+        )}
+        p.p.
+
+      </div>
+
+    </div>
+
+
+  </div>
+
+
+  <!-- GRÁFICOS -->
+
+  <h3>
+    Evolução corporal
+  </h3>
+
+
+  <div class="charts">
+
+
+    <div class="chart-box">
+
+      <h4>
+        Peso (kg)
+      </h4>
+
+      <div class="chart-container">
+
+        <canvas
+          id="reportWeightChart"
+        ></canvas>
+
+      </div>
+
+    </div>
+
+
+    <div class="chart-box">
+
+      <h4>
+        Gordura corporal (%)
+      </h4>
+
+      <div class="chart-container">
+
+        <canvas
+          id="reportFatChart"
+        ></canvas>
+
+      </div>
+
+    </div>
+
+
+    <div class="chart-box">
+
+      <h4>
+        Massa muscular (kg)
+      </h4>
+
+      <div class="chart-container">
+
+        <canvas
+          id="reportMuscleChart"
+        ></canvas>
+
+      </div>
+
+    </div>
+
+
+  </div>
+
+
+  <!-- MEDIDAS -->
+
+  <h3>
+    Medidas corporais
+  </h3>
+
+
+  <table>
+
+    <thead>
+
+      <tr>
+
+        <th>
+          Medida
+        </th>
+
+        <th>
+          Inicial
+        </th>
+
+        <th>
+          Atual
+        </th>
+
+        <th>
+          Variação
+        </th>
+
+      </tr>
+
+    </thead>
+
+
+    <tbody>
+
+      ${
+        measureRows
+          .map(
+            row => `
+
+              <tr>
+
+                <td>
+                  ${row[0]}
+                </td>
+
+                <td>
+                  ${formatNumber(
+                    row[1]
+                  )}
+                  cm
+                </td>
+
+                <td>
+                  ${formatNumber(
+                    row[2]
+                  )}
+                  cm
+                </td>
+
+                <td>
+                  ${difference(
+                    row[1],
+                    row[2]
+                  )}
+                  cm
+                </td>
+
+              </tr>
+
+            `
+          )
+          .join("")
+      }
+
+    </tbody>
+
+  </table>
+
+
+  <!-- RESUMO -->
+
+  <h3>
+    Resumo
+  </h3>
+
+
+  <div class="summary">
+
+    O relatório apresenta a comparação entre a
+    primeira e a última avaliação registrada no
+    sistema THM FIT.
+
+    <br><br>
+
+    Foram consideradas
+
+    <strong>
+      ${evaluations.length}
+    </strong>
+
+    avaliação(ões) no histórico do aluno.
+
+    <br><br>
+
+    Primeira avaliação:
+
+    <strong>
+      ${formatDate(
+        first.avaliado_em
+      )}
+    </strong>
+
+    <br>
+
+    Avaliação mais recente:
+
+    <strong>
+      ${formatDate(
+        last.avaliado_em
+      )}
+    </strong>
+
+  </div>
+
+
+  <!-- RODAPÉ -->
+
+  <div class="footer">
+
+    THM FIT — Sistema de gestão e acompanhamento
+    de alunos.
+
+    <br>
+
+    Documento gerado automaticamente pelo sistema.
+
+  </div>
+
+
+</div>
+
+
+<script>
+
+window.addEventListener(
+  "load",
+  function () {
+
+
+    /* =====================================================
+       GRÁFICO DE PESO
+       ===================================================== */
+
+    const weightCanvas =
+      document.getElementById(
+        "reportWeightChart"
+      );
+
+    if (weightCanvas) {
+
+      new Chart(
+        weightCanvas,
+        {
+
+          type:"line",
+
+          data: {
+
+            labels:
+              ${chartLabels},
+
+            datasets: [
+
+              {
+
+                label:
+                  "Peso (kg)",
+
+                data:
+                  ${weightData},
+
+                tension:0.3,
+
+                borderWidth:3,
+
+                pointRadius:4,
+
+                fill:false
+
+              }
+
+            ]
+
+          },
+
+          options: {
+
+            responsive:true,
+
+            maintainAspectRatio:false,
+
+            plugins: {
+
+              legend: {
+                display:true
+              }
+
+            },
+
+            scales: {
+
+              y: {
+
+                beginAtZero:false
+
+              }
+
+            }
+
+          }
+
+        }
+      );
+
+    }
+
+
+    /* =====================================================
+       GRÁFICO DE GORDURA
+       ===================================================== */
+
+    const fatCanvas =
+      document.getElementById(
+        "reportFatChart"
+      );
+
+    if (fatCanvas) {
+
+      new Chart(
+        fatCanvas,
+        {
+
+          type:"line",
+
+          data: {
+
+            labels:
+              ${chartLabels},
+
+            datasets: [
+
+              {
+
+                label:
+                  "Gordura corporal (%)",
+
+                data:
+                  ${fatData},
+
+                tension:0.3,
+
+                borderWidth:3,
+
+                pointRadius:4,
+
+                fill:false
+
+              }
+
+            ]
+
+          },
+
+          options: {
+
+            responsive:true,
+
+            maintainAspectRatio:false,
+
+            plugins: {
+
+              legend: {
+                display:true
+              }
+
+            },
+
+            scales: {
+
+              y: {
+
+                beginAtZero:false
+
+              }
+
+            }
+
+          }
+
+        }
+      );
+
+    }
+
+
+    /* =====================================================
+       GRÁFICO DE MASSA MUSCULAR
+       ===================================================== */
+
+    const muscleCanvas =
+      document.getElementById(
+        "reportMuscleChart"
+      );
+
+    if (muscleCanvas) {
+
+      new Chart(
+        muscleCanvas,
+        {
+
+          type:"line",
+
+          data: {
+
+            labels:
+              ${chartLabels},
+
+            datasets: [
+
+              {
+
+                label:
+                  "Massa muscular (kg)",
+
+                data:
+                  ${muscleData},
+
+                tension:0.3,
+
+                borderWidth:3,
+
+                pointRadius:4,
+
+                fill:false
+
+              }
+
+            ]
+
+          },
+
+          options: {
+
+            responsive:true,
+
+            maintainAspectRatio:false,
+
+            plugins: {
+
+              legend: {
+                display:true
+              }
+
+            },
+
+            scales: {
+
+              y: {
+
+                beginAtZero:false
+
+              }
+
+            }
+
+          }
+
+        }
+      );
+
+    }
+
+
+  }
+);
+
+</script>
+
+
+</body>
+
+</html>
+
+  `);
+
+
+  reportWindow.document.close();
+
+}
+
+  document.addEventListener(
+    "click",
+    event => {
+
+      const button =
+        event.target.closest(
+          "#generateStudentReportBtn"
+        );
+
+      if (!button) return;
+
+      createStudentReportWindow();
+
+    }
+  );
+
+})();

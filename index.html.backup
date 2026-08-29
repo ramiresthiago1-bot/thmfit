@@ -1,0 +1,2789 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+
+  <title>THM FIT</title>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+<div id="toast" class="toast"></div>
+
+<section id="loginScreen" class="login-screen">
+
+  <div class="login-card">
+
+    <div class="brand-mark">THM</div>
+
+    <h1>THM FIT</h1>
+
+    <p>Gestão inteligente para sua academia.</p>
+
+    <form id="loginForm">
+
+      <label>
+        E-mail
+        <input id="loginEmail" type="email" required>
+      </label>
+
+      <label>
+        Senha
+        <input id="loginPassword" type="password" required>
+      </label>
+
+      <button class="primary full" type="submit">
+        Entrar
+      </button>
+
+    </form>
+
+    <button id="demoBtn" class="secondary full" type="button">
+      Abrir demonstração local
+    </button>
+
+    <small>
+      O modo demonstração não grava dados no Supabase.
+    </small>
+
+  </div>
+
+</section>
+
+
+<div id="app" class="hidden">
+
+<header class="topbar">
+
+  <div class="brand">
+    THM FIT
+  </div>
+
+  <nav class="main-nav">
+
+    <button data-page="dashboard">Início</button>
+    <button data-page="alunos">Alunos</button>
+    <button data-page="financeiro">Financeiro</button>
+    <button data-page="acessos">Acessos</button>
+    <button data-page="comercial">Comercial</button>
+    <button data-page="treinos">Treinos</button>
+    <button data-page="avaliacoes">Avaliações</button>
+    <button data-page="relatorios">Relatórios</button>
+
+  </nav>
+
+  <div class="top-actions">
+
+    <span id="userLabel"></span>
+
+    <button id="logoutBtn" class="icon-btn">
+      ↪
+    </button>
+
+  </div>
+
+</header>
+
+
+<main class="content">
+
+<div class="breadcrumb">
+
+  Dashboard
+
+  <span>›</span>
+
+  <strong id="pageTitle">
+    Início
+  </strong>
+
+</div>
+
+
+<!-- DASHBOARD -->
+
+<section id="dashboardPage" class="page">
+
+  <div class="page-heading">
+
+    <div>
+
+      <h2>Dashboard</h2>
+
+      <p>
+        Visão geral da academia.
+      </p>
+
+    </div>
+
+    <button
+      class="primary"
+      data-page="alunos"
+    >
+      + Novo aluno
+    </button>
+
+  </div>
+
+
+  <div class="stats-grid">
+
+    <div class="stat">
+
+      <span>👥</span>
+
+      <b id="statAlunos">0</b>
+
+      <small>Alunos ativos</small>
+
+    </div>
+
+
+    <div class="stat">
+
+      <span>💳</span>
+
+      <b id="statFinanceiro">0</b>
+
+      <small>Registros financeiros</small>
+
+    </div>
+
+
+    <div class="stat">
+
+      <span>🚪</span>
+
+      <b id="statAcessos">0</b>
+
+      <small>Acessos registrados</small>
+
+    </div>
+
+
+    <div class="stat">
+
+      <span>🏋️</span>
+
+      <b id="statTreinos">0</b>
+
+      <small>Treinos cadastrados</small>
+
+    </div>
+
+  </div>
+
+
+  <div class="panel">
+
+    <div class="panel-title">
+      Últimos alunos
+    </div>
+
+    <div id="recentStudents"></div>
+
+  </div>
+
+</section>
+
+
+<!-- ALUNOS -->
+
+<section id="alunosPage" class="page hidden">
+
+  <div class="page-heading">
+
+    <div>
+
+      <h2>Alunos</h2>
+
+      <p>
+        Cadastro e acompanhamento.
+      </p>
+
+    </div>
+
+    <button
+      id="newStudentBtn"
+      class="primary"
+    >
+      + Novo aluno
+    </button>
+
+  </div>
+
+
+  <div class="toolbar">
+
+    <input
+      id="studentSearch"
+      type="search"
+      placeholder="🔎 Buscar por nome, CPF ou telefone"
+    >
+
+    <select id="studentStatus">
+
+      <option value="todos">
+        Todos
+      </option>
+
+      <option value="ativo">
+        Ativos
+      </option>
+
+      <option value="inativo">
+        Inativos
+      </option>
+
+    </select>
+
+  </div>
+
+
+  <div class="panel">
+
+    <div
+      id="studentsTable"
+      class="table-wrap"
+    ></div>
+
+  </div>
+
+</section>
+
+
+<!-- FINANCEIRO -->
+
+<section id="financeiroPage" class="page hidden">
+
+  <div class="page-heading">
+
+    <div>
+
+      <h2>Financeiro</h2>
+
+      <p>
+        Controle de mensalidades, pagamentos e lançamentos.
+      </p>
+
+    </div>
+
+    <button
+      id="newFinanceBtn"
+      class="primary"
+      type="button"
+    >
+      + Novo lançamento
+    </button>
+
+  </div>
+
+
+  <div class="stats-grid">
+
+    <div class="stat">
+
+      <span>💰</span>
+
+      <b id="financeTotal">R$ 0,00</b>
+
+      <small>Total recebido</small>
+
+    </div>
+
+
+    <div class="stat">
+
+      <span>📋</span>
+
+      <b id="financeLancamentos">0</b>
+
+      <small>Total de lançamentos</small>
+
+    </div>
+
+
+    <div class="stat">
+
+      <span>⏰</span>
+
+      <b id="financeAberto">R$ 0,00</b>
+
+      <small>Em aberto</small>
+
+    </div>
+
+
+    <div class="stat">
+
+      <span>❌</span>
+
+      <b id="financeAtrasado">R$ 0,00</b>
+
+      <small>Em atraso</small>
+
+    </div>
+
+  </div>
+<div class="finance-dashboard">
+
+  <div class="panel finance-chart-panel">
+    <div class="panel-title">
+      Receita por mês
+    </div>
+
+    <div class="chart-container">
+      <canvas id="financeRevenueChart"></canvas>
+    </div>
+  </div>
+
+  <div class="finance-chart-row">
+
+    <div class="panel finance-chart-panel">
+      <div class="panel-title">
+        Situação financeira
+      </div>
+
+      <div class="chart-container chart-small">
+        <canvas id="financeStatusChart"></canvas>
+      </div>
+    </div>
+
+    <div class="panel finance-chart-panel">
+      <div class="panel-title">
+        Formas de pagamento
+      </div>
+
+      <div class="chart-container chart-small">
+        <canvas id="financePaymentChart"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+  <div class="toolbar">
+
+    <input
+      id="financeSearch"
+      type="search"
+      placeholder="🔎 Buscar lançamento"
+    >
+
+    <select id="financeStatus">
+
+      <option value="todos">
+        Todos os status
+      </option>
+
+      <option value="pago">
+        Pago
+      </option>
+
+      <option value="aberto">
+        Em aberto
+      </option>
+
+      <option value="atrasado">
+        Em atraso
+      </option>
+
+      <option value="cancelado">
+        Cancelado
+      </option>
+
+    </select>
+
+  </div>
+
+
+  <div class="panel">
+
+    <div class="panel-title">
+      Lançamentos financeiros
+    </div>
+
+    <div
+      id="financeTable"
+      class="table-wrap"
+    >
+
+      <table class="table">
+
+        <thead>
+
+          <tr>
+
+            <th>Aluno</th>
+            <th>Descrição</th>
+            <th>Vencimento</th>
+            <th>Valor</th>
+            <th>Status</th>
+            <th>Pagamento</th>
+            <th>Ações</th>
+
+          </tr>
+
+        </thead>
+
+        <tbody>
+
+          <tr>
+
+            <td colspan="7">
+              Nenhum lançamento cadastrado.
+            </td>
+
+          </tr>
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </div>
+
+</section>
+
+
+<!-- ACESSOS -->
+
+<section id="acessosPage" class="page hidden">
+
+<div class="page-heading">
+
+  <div>
+
+    <h2>Acessos</h2>
+
+    <p>
+      Controle de acessos e situação dos alunos.
+    </p>
+
+  </div>
+
+  <button
+    id="newAccessBtn"
+    class="primary"
+    type="button"
+  >
+    + Registrar acesso
+  </button>
+
+</div>
+
+  <div class="stats-grid">
+
+    <div class="stat">
+      <span>🚪</span>
+      <b id="accessTotal">0</b>
+      <small>Acessos hoje</small>
+    </div>
+
+    <div class="stat">
+      <span>👥</span>
+      <b id="accessAlunosAtivos">0</b>
+      <small>Alunos ativos</small>
+    </div>
+
+    <div class="stat">
+      <span>🟢</span>
+      <b id="accessLiberados">0</b>
+      <small>Acessos liberados</small>
+    </div>
+
+    <div class="stat">
+      <span>🔴</span>
+      <b id="accessBloqueados">0</b>
+      <small>Acessos bloqueados</small>
+    </div>
+
+  </div>
+
+  <div class="toolbar">
+
+    <input
+      id="accessSearch"
+      type="search"
+      placeholder="🔎 Buscar aluno ou matrícula"
+    >
+
+    <select id="accessStatus">
+      <option value="todos">
+        Todos os alunos
+      </option>
+
+      <option value="ativo">
+        Ativos
+      </option>
+
+      <option value="inativo">
+        Inativos
+      </option>
+    </select>
+  </div>
+
+<!-- MODAL DE ACESSO -->
+
+<div id="accessModal" class="modal hidden">
+
+  <div class="modal-card">
+
+    <div class="modal-head">
+
+      <div>
+
+        <h3>Registrar acesso</h3>
+
+        <p>
+          Registre manualmente uma entrada ou tentativa de acesso.
+        </p>
+
+      </div>
+
+      <button
+        id="closeAccessModal"
+        class="icon-btn"
+        type="button"
+      >
+        ✕
+      </button>
+
+    </div>
+
+
+    <form
+      id="accessForm"
+      class="form-grid"
+    >
+
+      <label>
+
+        Aluno
+
+        <select
+          id="accessStudent"
+          required
+        >
+
+          <option value="">
+            Selecione o aluno
+          </option>
+
+        </select>
+
+      </label>
+
+
+      <label>
+
+        Equipamento
+
+        <input
+          id="accessEquipment"
+          type="text"
+          value="Simulação manual"
+          required
+        >
+
+      </label>
+
+
+      <label>
+
+        Tipo
+
+        <select
+          id="accessType"
+          required
+        >
+
+          <option value="entrada">
+            Entrada
+          </option>
+
+          <option value="saida">
+            Saída
+          </option>
+
+        </select>
+
+      </label>
+
+<button
+  id="checkAccessBtn"
+  class="secondary"
+  type="button"
+>
+  🔐 Verificar acesso automaticamente
+</button>
+
+      <label>
+
+        Resultado
+
+        <select
+          id="accessResult"
+          required
+        >
+
+          <option value="liberado">
+            Liberado
+          </option>
+
+          <option value="bloqueado">
+            Bloqueado
+          </option>
+
+        </select>
+
+      </label>
+
+
+      <div class="form-actions">
+
+        <button
+          id="cancelAccessModal"
+          class="secondary"
+          type="button"
+        >
+          Cancelar
+        </button>
+
+        <button
+          class="primary"
+          type="submit"
+        >
+          Registrar acesso
+        </button>
+
+      </div>
+
+    </form>
+
+  </div>
+
+</div>
+
+<!-- SIMULAÇÃO TOPDATA -->
+<div class="panel">
+  <div class="panel-title">
+    🔐 Simulação de acesso por matrícula
+  </div>
+
+  <div class="form-grid">
+    <label>
+      Matrícula
+      <input
+        id="topdataMatricula"
+        type="text"
+        placeholder="Digite a matrícula"
+      >
+    </label>
+
+    <div class="form-actions">
+      <button
+        id="topdataCheckBtn"
+        class="primary"
+        type="button"
+      >
+        Verificar acesso
+      </button>
+    </div>
+  </div>
+
+  <div
+    id="topdataResult"
+    class="placeholder hidden"
+    style="margin-top: 16px;"
+  ></div>
+</div>
+
+  <div class="panel">
+    <div class="panel-title">
+      Controle de acesso dos alunos
+    </div>
+
+    <div
+      id="accessTable"
+      class="table-wrap"
+    >
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Matrícula</th>
+            <th>Aluno</th>
+            <th>Status</th>
+            <th>Situação financeira</th>
+            <th>Último acesso</th>
+            <th>Acesso</th>
+          </tr>
+        </thead>
+
+        <tbody>
+          <tr>
+            <td colspan="6">
+              Nenhum aluno encontrado.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+
+  <!-- HISTÓRICO DE ACESSOS -->
+
+  <div class="panel">
+
+    <div class="panel-title">
+      Histórico de acessos
+    </div>
+
+    <div class="toolbar">
+
+      <input
+        id="accessHistorySearch"
+        type="search"
+        placeholder="🔎 Buscar aluno ou matrícula"
+      >
+
+      <input
+        id="accessHistoryStart"
+        type="date"
+      >
+
+      <input
+        id="accessHistoryEnd"
+        type="date"
+      >
+
+      <select id="accessHistoryType">
+
+        <option value="todos">
+          Todos os tipos
+        </option>
+
+        <option value="entrada">
+          Entrada
+        </option>
+
+        <option value="saida">
+          Saída
+        </option>
+
+      </select>
+
+      <select id="accessHistoryResult">
+
+        <option value="todos">
+          Todos os resultados
+        </option>
+
+        <option value="liberado">
+          Liberado
+        </option>
+
+        <option value="bloqueado">
+          Bloqueado
+        </option>
+
+      </select>
+
+    </div>    
+
+    <div
+      id="accessHistoryTable"
+      class="table-wrap"
+    >
+
+      <table class="table">
+
+        <thead>
+          <tr>
+            <th>Data/Hora</th>
+            <th>Matrícula</th>
+            <th>Aluno</th>
+            <th>Tipo</th>
+            <th>Resultado</th>
+<th>Equipamento</th>
+<th>Origem</th>
+          </tr>
+        </thead>
+
+        <tbody>
+
+          <tr>
+            <td colspan="6">
+              Nenhum acesso registrado.
+            </td>
+          </tr>
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </div>  
+
+</section>
+
+<!-- COMERCIAL -->
+
+<section id="comercialPage" class="page hidden">
+
+  <div class="page-header">
+
+    <div>
+      <h2>Comercial</h2>
+      <p>
+        Gerencie leads, contatos e oportunidades
+        de novos alunos.
+      </p>
+    </div>
+
+    <button
+      id="newLeadBtn"
+      class="primary-btn"
+      type="button"
+    >
+      + Novo Lead
+    </button>
+
+  </div>
+
+
+  <!-- INDICADORES -->
+
+  <div class="stats-grid">
+
+    <div class="stat-card">
+      <span>Total de Leads</span>
+      <strong id="commercialTotalLeads">
+        0
+      </strong>
+    </div>
+
+    <div class="stat-card">
+      <span>Novos Leads</span>
+      <strong id="commercialNewLeads">
+        0
+      </strong>
+    </div>
+
+    <div class="stat-card">
+      <span>Interessados</span>
+      <strong id="commercialInterestedLeads">
+        0
+      </strong>
+    </div>
+
+    <div class="stat-card">
+      <span>Convertidos</span>
+      <strong id="commercialConvertedLeads">
+        0
+      </strong>
+    </div>
+
+  </div>
+
+
+  <!-- FILTROS -->
+
+  <div class="filters">
+
+    <input
+      type="text"
+      id="commercialSearch"
+      placeholder="Buscar por nome, telefone ou e-mail"
+    />
+
+    <select id="commercialStatusFilter">
+
+      <option value="">
+        Todos os status
+      </option>
+
+      <option value="Novo">
+        Novo
+      </option>
+
+      <option value="Em contato">
+        Em contato
+      </option>
+
+      <option value="Interessado">
+        Interessado
+      </option>
+
+      <option value="Matriculado">
+        Matriculado
+      </option>
+
+      <option value="Perdido">
+        Perdido
+      </option>
+
+    </select>
+
+  </div>
+
+
+  <!-- TABELA -->
+
+  <div class="table-container">
+
+    <table>
+
+      <thead>
+
+        <tr>
+          <th>Nome</th>
+          <th>Telefone</th>
+          <th>Objetivo</th>
+          <th>Plano</th>
+          <th>Status</th>
+          <th>Origem</th>
+          <th>Data</th>
+          <th>Ações</th>
+        </tr>
+
+      </thead>
+
+      <tbody id="commercialTableBody">
+
+        <tr>
+          <td
+            colspan="8"
+            class="empty-row"
+          >
+            Nenhum lead cadastrado.
+          </td>
+        </tr>
+
+      </tbody>
+
+    </table>
+
+  </div>
+
+</section>
+
+
+<!-- MODAL COMERCIAL -->
+
+<div
+  id="leadModal"
+  class="modal hidden"
+>
+
+  <div class="modal-content">
+
+    <div class="modal-header">
+
+      <h2 id="leadModalTitle">
+        Novo Lead
+      </h2>
+
+      <button
+        id="closeLeadModalBtn"
+        class="close-btn"
+        type="button"
+      >
+        ×
+      </button>
+
+    </div>
+
+
+    <form id="leadForm">
+
+      <input
+        type="hidden"
+        id="leadId"
+      />
+
+
+      <div class="form-grid">
+
+        <div class="form-group">
+
+          <label>Nome completo *</label>
+
+          <input
+            type="text"
+            id="leadNome"
+            required
+          />
+
+        </div>
+
+
+        <div class="form-group">
+
+          <label>Telefone</label>
+
+          <input
+            type="text"
+            id="leadTelefone"
+          />
+
+        </div>
+
+
+        <div class="form-group">
+
+          <label>E-mail</label>
+
+          <input
+            type="email"
+            id="leadEmail"
+          />
+
+        </div>
+
+
+        <div class="form-group">
+
+          <label>Objetivo</label>
+
+          <select id="leadObjetivo">
+
+            <option value="">
+              Selecione
+            </option>
+
+            <option value="Hipertrofia">
+              Hipertrofia
+            </option>
+
+            <option value="Emagrecimento">
+              Emagrecimento
+            </option>
+
+            <option value="Condicionamento">
+              Condicionamento
+            </option>
+
+            <option value="Força">
+              Força
+            </option>
+
+            <option value="Qualidade de vida">
+              Qualidade de vida
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <div class="form-group">
+
+          <label>Plano de interesse</label>
+
+          <select id="leadPlano">
+
+            <option value="">
+              Selecione
+            </option>
+
+            <option value="Mensal">
+              Mensal
+            </option>
+
+            <option value="Trimestral">
+              Trimestral
+            </option>
+
+            <option value="Semestral">
+              Semestral
+            </option>
+
+            <option value="Anual">
+              Anual
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <div class="form-group">
+
+          <label>Status</label>
+
+          <select id="leadStatus">
+
+            <option value="Novo">
+              Novo
+            </option>
+
+            <option value="Em contato">
+              Em contato
+            </option>
+
+            <option value="Interessado">
+              Interessado
+            </option>
+
+            <option value="Matriculado">
+              Matriculado
+            </option>
+
+            <option value="Perdido">
+              Perdido
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <div class="form-group">
+
+          <label>Origem do lead</label>
+
+          <input
+            type="text"
+            id="leadOrigem"
+            placeholder="Ex.: Instagram, indicação, WhatsApp"
+          />
+
+        </div>
+
+
+        <div class="form-group">
+
+          <label>Data do contato</label>
+
+          <input
+            type="date"
+            id="leadDataContato"
+          />
+
+        </div>
+
+      </div>
+
+
+      <div class="form-group">
+
+        <label>Observações</label>
+
+        <textarea
+          id="leadObservacoes"
+          rows="4"
+        ></textarea>
+
+      </div>
+
+
+      <div class="modal-actions">
+
+        <button
+          id="cancelLeadBtn"
+          class="secondary-btn"
+          type="button"
+        >
+          Cancelar
+        </button>
+
+        <button
+          class="primary-btn"
+          type="submit"
+        >
+          Salvar Lead
+        </button>
+
+      </div>
+
+    </form>
+
+  </div>
+
+</div>
+
+<!-- TREINOS -->
+<section id="treinosPage" class="page hidden">
+
+  <div class="page-heading">
+
+    <div>
+      <h2>Treinos</h2>
+      <p>
+        Gerencie fichas de treino, exercícios e evolução dos alunos.
+      </p>
+    </div>
+
+    <button
+      id="newWorkoutBtn"
+      class="primary"
+      type="button"
+    >
+      + Nova ficha
+    </button>
+<button
+  id="generateWorkoutBtn"
+  class="secondary"
+  type="button"
+>
+  ✨ Gerar treino assistido
+</button>
+  </div>
+
+
+  <div class="stats-grid">
+
+    <div class="stat">
+      <span>🏋️</span>
+      <b id="workoutStatTotal">0</b>
+      <small>Fichas cadastradas</small>
+    </div>
+
+    <div class="stat">
+      <span>👥</span>
+      <b id="workoutStatStudents">0</b>
+      <small>Alunos com treino</small>
+    </div>
+
+    <div class="stat">
+      <span>📋</span>
+      <b id="workoutStatExercises">0</b>
+      <small>Exercícios cadastrados</small>
+    </div>
+<div
+  id="workoutDivisionStats"
+  class="stats-grid"
+>
+</div>
+  </div>
+
+<!-- VISUALIZAÇÃO DA FICHA -->
+<div
+  id="workoutViewer"
+  class="panel hidden"
+>
+
+  <div class="panel-title">
+    <span>Visualização da ficha</span>
+
+    <button
+      id="closeWorkoutViewerBtn"
+      class="secondary"
+      type="button"
+    >
+      Fechar
+    </button>
+  </div>
+
+  <div id="workoutViewerContent"></div>
+
+</div>
+
+  <!-- EDITOR DA FICHA -->
+
+  <div
+    id="workoutEditor"
+    class="panel hidden"
+  >
+
+    <div class="panel-title">
+      <span id="workoutEditorTitle">
+        Nova ficha de treino
+      </span>
+    </div>
+
+
+    <form
+      id="workoutForm"
+      class="form-grid"
+    >
+
+      <input
+        id="workoutId"
+        type="hidden"
+      >
+
+
+      <label class="span-2">
+
+        Aluno
+
+        <select
+          id="workoutStudent"
+          required
+        >
+
+          <option value="">
+            Selecione o aluno
+          </option>
+
+        </select>
+
+      </label>
+
+
+      <label>
+
+        Nome da ficha
+
+        <input
+          id="workoutName"
+          maxlength="100"
+          placeholder="Ex.: Treino A — Hipertrofia"
+          required
+        >
+
+      </label>
+
+
+      <label>
+
+        Objetivo
+
+        <select id="workoutGoal">
+
+          <option value="">
+            Selecione
+          </option>
+
+          <option value="Hipertrofia">
+            Hipertrofia
+          </option>
+
+          <option value="Emagrecimento">
+            Emagrecimento
+          </option>
+
+          <option value="Condicionamento">
+            Condicionamento
+          </option>
+
+          <option value="Força">
+            Força
+          </option>
+
+          <option value="Qualidade de vida">
+            Qualidade de vida
+          </option>
+
+          <option value="Reabilitação">
+            Reabilitação
+          </option>
+
+        </select>
+
+      </label>
+
+
+      <label>
+
+        Status
+
+        <select id="workoutFormStatus">
+
+          <option value="ativo">
+            Ativo
+          </option>
+
+          <option value="inativo">
+            Inativo
+          </option>
+
+        </select>
+
+      </label>
+
+<div
+  id="workoutGeneratorOptions"
+  class="span-2 hidden"
+>
+
+  <div class="section-title span-2">
+    ✨ Parâmetros do treino assistido
+  </div>
+
+  <label>
+    Nível
+    <select id="workoutGeneratorLevel">
+      <option value="">
+        Selecione
+      </option>
+      <option value="Iniciante">
+        Iniciante
+      </option>
+      <option value="Intermediário">
+        Intermediário
+      </option>
+      <option value="Avançado">
+        Avançado
+      </option>
+    </select>
+  </label>
+
+  <label>
+    Frequência semanal
+    <select id="workoutGeneratorFrequency">
+      <option value="">
+        Selecione
+      </option>
+      <option value="2">
+        2x por semana
+      </option>
+      <option value="3">
+        3x por semana
+      </option>
+      <option value="4">
+        4x por semana
+      </option>
+      <option value="5">
+        5x por semana
+      </option>
+    </select>
+  </label>
+
+  <label>
+    Tempo por treino
+    <select id="workoutGeneratorTime">
+      <option value="">
+        Selecione
+      </option>
+      <option value="30">
+        Até 30 minutos
+      </option>
+      <option value="45">
+        Até 45 minutos
+      </option>
+      <option value="60">
+        Até 60 minutos
+      </option>
+      <option value="90">
+        Até 90 minutos
+      </option>
+    </select>
+  </label>
+
+  <label class="span-2">
+    Restrições ou observações
+    <textarea
+      id="workoutGeneratorNotes"
+      rows="3"
+      placeholder="Ex.: evitar exercícios com impacto, foco em membros inferiores..."
+    ></textarea>
+  </label>
+
+  <div class="span-2">
+    <button
+      id="buildWorkoutBtn"
+      class="primary"
+      type="button"
+    >
+      ✨ Montar sugestão de treino
+    </button>
+  </div>
+
+</div>      
+
+      <div class="section-title span-2">
+        Exercícios
+      </div>
+
+
+      <div
+        id="exerciseList"
+        class="span-2"
+      ></div>
+
+
+      <div class="span-2">
+
+        <button
+          id="addExerciseBtn"
+          class="secondary"
+          type="button"
+        >
+          + Adicionar exercício
+        </button>
+
+      </div>
+
+
+      <div class="form-actions span-2">
+
+        <button
+          id="cancelWorkoutBtn"
+          class="secondary"
+          type="button"
+        >
+          Cancelar
+        </button>
+
+        <button
+          class="primary"
+          type="submit"
+        >
+          Salvar ficha
+        </button>
+
+      </div>
+
+    </form>
+
+  </div>
+
+
+  <!-- LISTAGEM -->
+
+  <div class="panel">
+
+    <div class="panel-title">
+      Fichas de treino
+    </div>
+
+
+    <div class="toolbar">
+
+      <input
+        id="workoutSearch"
+        type="search"
+        placeholder="🔎 Buscar aluno"
+      >
+
+      <select id="workoutStatus">
+
+        <option value="">
+          Todos os status
+        </option>
+
+        <option value="ativo">
+          Ativos
+        </option>
+
+        <option value="inativo">
+          Inativos
+        </option>
+
+      </select>
+
+    </div>
+
+
+    <div
+      id="workoutTable"
+      class="table-wrap"
+    >
+
+      <table class="table">
+
+        <thead>
+
+          <tr>
+
+            <th>Aluno</th>
+            <th>Objetivo</th>
+            <th>Ficha</th>
+            <th>Exercícios</th>
+            <th>Atualização</th>
+            <th>Status</th>
+            <th>Ações</th>
+
+          </tr>
+
+        </thead>
+
+
+        <tbody id="workoutTableBody">
+
+          <tr>
+
+            <td colspan="7">
+              Nenhuma ficha de treino cadastrada.
+            </td>
+
+          </tr>
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </div>
+
+</section>
+
+<!-- AVALIAÇÕES -->
+
+<section id="avaliacoesPage" class="page hidden">
+
+  <div class="page-header">
+
+    <div>
+
+      <h2>Avaliações físicas</h2>
+
+      <p>
+        Acompanhe a evolução corporal dos alunos.
+      </p>
+
+    </div>
+
+    <button
+      id="newEvaluationBtn"
+      class="primary"
+      type="button"
+    >
+      + Nova avaliação
+    </button>
+
+  </div>
+
+
+  <!-- INDICADORES -->
+
+  <div class="stats-grid">
+
+    <div class="stat-card">
+
+      <span class="stat-label">
+        Avaliações realizadas
+      </span>
+
+      <strong
+        id="evaluationStatTotal"
+        class="stat-value"
+      >
+        0
+      </strong>
+
+    </div>
+
+
+    <div class="stat-card">
+
+      <span class="stat-label">
+        Alunos avaliados
+      </span>
+
+      <strong
+        id="evaluationStatStudents"
+        class="stat-value"
+      >
+        0
+      </strong>
+
+    </div>
+
+
+    <div class="stat-card">
+
+      <span class="stat-label">
+        Última avaliação
+      </span>
+
+      <strong
+        id="evaluationStatLast"
+        class="stat-value"
+      >
+        —
+      </strong>
+
+    </div>
+
+  </div>
+
+
+  <!-- EDITOR -->
+
+  <div
+    id="evaluationEditor"
+    class="panel hidden"
+  >
+
+    <div class="panel-title">
+
+      <span id="evaluationEditorTitle">
+        Nova avaliação
+      </span>
+
+    </div>
+
+
+    <form
+      id="evaluationForm"
+      class="form-grid"
+    >
+
+      <input
+        id="evaluationId"
+        type="hidden"
+      >
+
+
+      <label class="span-2">
+
+        Aluno
+
+        <select
+          id="evaluationStudent"
+          required
+        >
+
+          <option value="">
+            Selecione o aluno
+          </option>
+
+        </select>
+
+      </label>
+
+
+      <label>
+
+        Data da avaliação
+
+        <input
+          id="evaluationDate"
+          type="date"
+          required
+        >
+
+      </label>
+
+
+      <label>
+
+        Peso (kg)
+
+        <input
+          id="evaluationWeight"
+          type="number"
+          step="0.1"
+          min="0"
+          placeholder="Ex.: 82.5"
+        >
+
+      </label>
+
+
+      <label>
+
+        Altura (cm)
+
+        <input
+          id="evaluationHeight"
+          type="number"
+          step="0.1"
+          min="0"
+          placeholder="Ex.: 175"
+        >
+
+      </label>
+
+
+      <label>
+
+        IMC
+
+        <input
+          id="evaluationBmi"
+          type="number"
+          step="0.1"
+          readonly
+          placeholder="Calculado automaticamente"
+        >
+
+      </label>
+
+
+      <div class="section-title span-2">
+        Composição corporal
+      </div>
+
+
+      <label>
+
+        Gordura corporal (%)
+
+        <input
+          id="evaluationBodyFat"
+          type="number"
+          step="0.1"
+          min="0"
+          placeholder="Ex.: 18.5"
+        >
+
+      </label>
+
+
+      <label>
+
+        Massa muscular (kg)
+
+        <input
+          id="evaluationMuscleMass"
+          type="number"
+          step="0.1"
+          min="0"
+          placeholder="Ex.: 38.2"
+        >
+
+      </label>
+
+
+      <label>
+
+        Água corporal (%)
+
+        <input
+          id="evaluationWater"
+          type="number"
+          step="0.1"
+          min="0"
+          placeholder="Ex.: 58.0"
+        >
+
+      </label>
+
+
+      <label>
+
+        Gordura visceral
+
+        <input
+          id="evaluationVisceralFat"
+          type="number"
+          step="0.1"
+          min="0"
+          placeholder="Ex.: 8"
+        >
+
+      </label>
+
+<div class="section-title span-2">
+  Medidas corporais
+</div>
+
+<label>
+  Pescoço (cm)
+  <input
+    id="evaluationNeck"
+    type="number"
+    step="0.1"
+    min="0"
+  >
+</label>
+
+<label>
+  Ombros (cm)
+  <input
+    id="evaluationShoulders"
+    type="number"
+    step="0.1"
+    min="0"
+  >
+</label>
+
+<label>
+  Peitoral (cm)
+  <input
+    id="evaluationChest"
+    type="number"
+    step="0.1"
+    min="0"
+  >
+</label>
+
+<label>
+  Cintura (cm)
+  <input
+    id="evaluationWaist"
+    type="number"
+    step="0.1"
+    min="0"
+  >
+</label>
+
+<label>
+  Abdômen (cm)
+  <input
+    id="evaluationAbdomen"
+    type="number"
+    step="0.1"
+    min="0"
+  >
+</label>
+
+<label>
+  Quadril (cm)
+  <input
+    id="evaluationHip"
+    type="number"
+    step="0.1"
+    min="0"
+  >
+</label>
+
+<label>
+  Braço direito (cm)
+  <input
+    id="evaluationRightArm"
+    type="number"
+    step="0.1"
+    min="0"
+  >
+</label>
+
+<label>
+  Braço esquerdo (cm)
+  <input
+    id="evaluationLeftArm"
+    type="number"
+    step="0.1"
+    min="0"
+  >
+</label>
+
+<label>
+  Antebraço direito (cm)
+  <input
+    id="evaluationRightForearm"
+    type="number"
+    step="0.1"
+    min="0"
+  >
+</label>
+
+<label>
+  Antebraço esquerdo (cm)
+  <input
+    id="evaluationLeftForearm"
+    type="number"
+    step="0.1"
+    min="0"
+  >
+</label>
+
+<label>
+  Coxa direita (cm)
+  <input
+    id="evaluationRightThigh"
+    type="number"
+    step="0.1"
+    min="0"
+  >
+</label>
+
+<label>
+  Coxa esquerda (cm)
+  <input
+    id="evaluationLeftThigh"
+    type="number"
+    step="0.1"
+    min="0"
+  >
+</label>
+
+<label>
+  Panturrilha direita (cm)
+  <input
+    id="evaluationRightCalf"
+    type="number"
+    step="0.1"
+    min="0"
+  >
+</label>
+
+<label>
+  Panturrilha esquerda (cm)
+  <input
+    id="evaluationLeftCalf"
+    type="number"
+    step="0.1"
+    min="0"
+  >
+</label>
+
+      <label class="span-2">
+
+        Observações
+
+        <textarea
+          id="evaluationNotes"
+          rows="4"
+          placeholder="Observações da avaliação..."
+        ></textarea>
+
+      </label>
+
+
+      <div class="form-actions span-2">
+
+        <button
+          id="cancelEvaluationBtn"
+          class="secondary"
+          type="button"
+        >
+          Cancelar
+        </button>
+
+
+        <button
+          class="primary"
+          type="submit"
+        >
+          Salvar avaliação
+        </button>
+
+      </div>
+
+    </form>
+
+  </div>
+
+
+  <!-- HISTÓRICO -->
+
+  <div class="panel">
+
+    <div class="panel-title">
+      Histórico de avaliações
+    </div>
+
+
+    <div class="toolbar">
+
+      <input
+        id="evaluationSearch"
+        type="search"
+        placeholder="🔎 Buscar aluno"
+      >
+
+    </div>
+
+
+    <div class="table-wrap">
+
+      <table class="table">
+
+        <thead>
+
+          <tr>
+
+            <th>Aluno</th>
+
+            <th>Data</th>
+
+            <th>Peso</th>
+
+            <th>Gordura</th>
+
+            <th>Massa muscular</th>
+
+            <th>IMC</th>
+
+            <th>Ações</th>
+
+          </tr>
+
+        </thead>
+
+
+        <tbody id="evaluationTableBody">
+
+          <tr>
+
+            <td colspan="7">
+
+              Nenhuma avaliação cadastrada.
+
+            </td>
+
+          </tr>
+
+        </tbody>
+
+      </table>
+
+    </div>
+
+  </div>
+
+</section>
+
+<!-- RELATÓRIOS -->
+
+<section id="relatoriosPage" class="page hidden">
+
+  <div class="placeholder">
+
+    <h2>Relatórios</h2>
+
+    <p>
+      Módulo preparado para indicadores
+      da academia.
+    </p>
+
+  </div>
+
+</section>
+
+</main>
+
+</div>
+
+
+<!-- MODAL DO ALUNO -->
+
+<div id="studentModal" class="modal hidden">
+
+<div class="modal-card">
+
+<div class="modal-head">
+
+  <div>
+
+    <h2 id="modalTitle">
+      Novo aluno
+    </h2>
+
+    <p>
+      Cadastre o aluno no banco do THM.
+    </p>
+
+  </div>
+
+  <button
+    id="closeModal"
+    class="icon-btn"
+  >
+    ×
+  </button>
+
+</div>
+
+
+<form id="studentForm" class="form-grid">
+
+<input id="studentId" type="hidden">
+
+
+<div class="section-title span-2">
+  Identificação
+</div>
+
+
+<label>
+
+  Matrícula
+
+  <input
+    id="studentMatricula"
+    maxlength="30"
+    placeholder="Ex.: 000123"
+  >
+
+</label>
+
+
+<label>
+
+  Status
+
+  <select id="studentStatusForm">
+
+    <option value="ativo">
+      Ativo
+    </option>
+
+    <option value="inativo">
+      Inativo
+    </option>
+
+  </select>
+
+</label>
+
+
+<div class="section-title span-2">
+  Dados pessoais
+</div>
+
+
+<label class="span-2">
+
+  Nome completo *
+
+  <input
+    id="studentName"
+    required
+    maxlength="150"
+  >
+
+</label>
+
+
+<label>
+
+  CPF
+
+  <input
+    id="studentCpf"
+    maxlength="20"
+  >
+
+</label>
+
+
+<label>
+
+  Telefone
+
+  <input
+    id="studentPhone"
+    maxlength="30"
+  >
+
+</label>
+
+
+<label>
+
+  Data de nascimento
+
+  <input
+    id="studentBirth"
+    type="date"
+  >
+
+</label>
+
+
+<label>
+
+  Objetivo
+
+  <select id="studentGoal">
+
+    <option value="">
+      Selecione
+    </option>
+
+    <option>Hipertrofia</option>
+    <option>Emagrecimento</option>
+    <option>Condicionamento</option>
+    <option>Força</option>
+    <option>Qualidade de vida</option>
+    <option>Reabilitação</option>
+
+  </select>
+
+</label>
+
+<label>
+  Plano
+  <select id="studentPlan">
+    <option value="">Selecione o plano</option>
+    <option value="Mensal">Mensal</option>
+    <option value="Trimestral">Trimestral</option>
+    <option value="Semestral">Semestral</option>
+    <option value="Anual">Anual</option>
+  </select>
+</label>
+<label>
+  Taxa de matrícula
+  <input
+    id="studentTaxaMatricula"
+    type="text"
+    value="R$ 10,00"
+    readonly
+  >
+</label>
+
+<label>
+  <span>Conceder desconto na matrícula</span>
+  <input
+    id="studentDescontoMatricula"
+    type="checkbox"
+  >
+  <small style="display: block; margin-top: 6px;">
+    Isenta a taxa de matrícula de R$ 10,00.
+  </small>
+</label>
+
+<div class="section-title span-2">
+  Vínculo com a academia
+</div>
+
+
+<label>
+
+  Data da matrícula
+
+  <input
+    id="studentDataMatricula"
+    type="date"
+  >
+
+</label>
+
+
+<label>
+
+  Data de início
+
+  <input
+    id="studentDataInicio"
+    type="date"
+  >
+
+</label>
+
+
+<div class="section-title span-2">
+  Responsável
+</div>
+
+
+<label>
+
+  Nome do responsável
+
+  <input
+    id="studentResponsavel"
+    maxlength="150"
+  >
+
+</label>
+
+
+<label>
+
+  Telefone do responsável
+
+  <input
+    id="studentTelefoneResponsavel"
+    maxlength="30"
+  >
+
+</label>
+
+
+<div class="section-title span-2">
+  Endereço
+</div>
+
+
+<label>
+
+  CEP
+
+  <input
+    id="studentCep"
+    maxlength="9"
+    inputmode="numeric"
+    placeholder="00000-000"
+  >
+
+</label>
+
+
+<label>
+
+  Estado
+
+  <input
+    id="studentEstado"
+    maxlength="2"
+    placeholder="UF"
+  >
+
+</label>
+
+
+<label class="span-2">
+
+  Rua
+
+  <input
+    id="studentRua"
+    maxlength="200"
+  >
+
+</label>
+
+
+<label>
+
+  Número
+
+  <input
+    id="studentNumero"
+    maxlength="20"
+  >
+
+</label>
+
+
+<label>
+
+  Complemento
+
+  <input
+    id="studentComplemento"
+    maxlength="100"
+  >
+
+</label>
+
+
+<label>
+
+  Bairro
+
+  <input
+    id="studentBairro"
+    maxlength="100"
+  >
+
+</label>
+
+
+<label>
+
+  Cidade
+
+  <input
+    id="studentCidade"
+    maxlength="100"
+  >
+
+</label>
+
+
+<div class="section-title span-2">
+  Observações
+</div>
+
+
+<label class="span-2">
+
+  Observações gerais
+
+  <textarea
+    id="studentObservacoes"
+    rows="4"
+    maxlength="1000"
+    placeholder="Informações importantes sobre o aluno..."
+  ></textarea>
+
+</label>
+
+<div id="studentFinanceSection" class="section-title span-2">
+  Histórico financeiro
+</div>
+
+<div id="studentFinance" class="span-2">
+  <p>Nenhum lançamento financeiro encontrado.</p>
+</div>
+<div class="form-actions span-2">
+
+  <button
+    id="cancelModal"
+    class="secondary"
+    type="button"
+  >
+    Cancelar
+  </button>
+
+  <button
+    class="primary"
+    type="submit"
+  >
+    Salvar aluno
+  </button>
+
+</div>
+
+
+</form>
+
+</div>
+
+</div>
+
+
+<!-- MODAL FINANCEIRO -->
+
+<div id="financeModal" class="modal hidden">
+
+<div class="modal-card">
+
+<div class="modal-head">
+
+  <div>
+
+    <h2>Novo lançamento</h2>
+
+    <p>
+      Registre uma movimentação financeira.
+    </p>
+
+  </div>
+
+  <button
+    id="closeFinanceModal"
+    class="icon-btn"
+    type="button"
+  >
+    ×
+  </button>
+
+</div>
+
+
+<form id="financeForm" class="form-grid">
+
+<input
+  id="financeId"
+  type="hidden"
+>
+
+<div id="studentFinanceSection" class="section-title span-2">
+  Histórico financeiro
+</div>
+
+<div id="studentFinance" class="span-2">
+  <p>Nenhum lançamento financeiro encontrado.</p>
+</div>
+<div class="section-title span-2">
+  Dados do lançamento
+</div>
+
+
+<label class="span-2">
+
+  Aluno
+
+  <select id="financeStudent">
+
+    <option value="">
+      Selecione o aluno
+    </option>
+  </select>
+
+  <small id="financeStudentPlan" style="display: block; margin-top: 6px;" ></small>
+</label>
+
+
+<label>
+
+  Tipo
+
+  <select id="financeTipo">
+
+    <option value="mensalidade">
+      Mensalidade
+    </option>
+
+    <option value="matricula">
+      Matrícula
+    </option>
+
+    <option value="produto">
+      Produto
+    </option>
+
+    <option value="servico">
+      Serviço
+    </option>
+
+    <option value="outro">
+      Outro
+    </option>
+
+  </select>
+
+</label>
+
+
+<label>
+
+  Status
+
+  <select id="financeStatusForm">
+
+    <option value="aberto">
+      Em aberto
+    </option>
+
+    <option value="pago">
+      Pago
+    </option>
+
+    <option value="atrasado">
+      Em atraso
+    </option>
+
+    <option value="cancelado">
+      Cancelado
+    </option>
+
+  </select>
+
+</label>
+
+
+<label>
+
+  Descrição
+
+  <input
+    id="financeDescricao"
+    maxlength="150"
+    placeholder="Ex.: Mensalidade agosto"
+  >
+
+</label>
+
+
+<label>
+
+  Valor
+
+  <input
+    id="financeValor"
+    type="number"
+    min="0"
+    step="0.01"
+    placeholder="0,00"
+  >
+
+</label>
+
+
+<label>
+
+  Data de vencimento
+
+  <input
+    id="financeVencimento"
+    type="date"
+  >
+
+</label>
+
+
+<label>
+
+  Data de pagamento
+
+  <input
+    id="financePagamento"
+    type="date"
+  >
+
+</label>
+
+
+<label>
+
+  Forma de pagamento
+
+  <select id="financeFormaPagamento">
+
+    <option value="">
+      Selecione
+    </option>
+
+    <option value="pix">
+      PIX
+    </option>
+
+    <option value="dinheiro">
+      Dinheiro
+    </option>
+
+    <option value="cartao_credito">
+      Cartão de crédito
+    </option>
+
+    <option value="cartao_debito">
+      Cartão de débito
+    </option>
+
+    <option value="boleto">
+      Boleto
+    </option>
+
+    <option value="transferencia">
+      Transferência
+    </option>
+
+    <option value="outro">
+      Outro
+    </option>
+
+  </select>
+
+</label>
+
+
+<label class="span-2">
+
+  Observações
+
+  <textarea
+    id="financeObservacoes"
+    rows="3"
+    maxlength="500"
+    placeholder="Observações sobre este lançamento..."
+  ></textarea>
+
+</label>
+
+
+<div class="form-actions span-2">
+
+  <button
+    id="cancelFinanceModal"
+    class="secondary"
+    type="button"
+  >
+    Cancelar
+  </button>
+
+  <button
+    class="primary"
+    type="submit"
+  >
+    Salvar lançamento
+  </button>
+
+</div>
+
+
+</form>
+
+</div>
+
+</div>
+
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="app.js"></script>
+
+</body>
+
+</html>
