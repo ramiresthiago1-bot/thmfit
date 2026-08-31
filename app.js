@@ -10865,6 +10865,163 @@ function createStudentReportWindow() {
       )
     );
 
+  /* =========================================================
+     ANÁLISE AUTOMÁTICA DA EVOLUÇÃO
+     ========================================================= */
+
+  const initialWeight =
+    Number(first.peso_kg);
+
+  const currentWeight =
+    Number(last.peso_kg);
+
+  const initialFat =
+    Number(first.gordura_percent);
+
+  const currentFat =
+    Number(last.gordura_percent);
+
+  const initialMuscle =
+    Number(first.massa_muscular_kg);
+
+  const currentMuscle =
+    Number(last.massa_muscular_kg);
+
+
+  const weightDiff =
+    currentWeight - initialWeight;
+
+  const fatDiff =
+    currentFat - initialFat;
+
+  const muscleDiff =
+    currentMuscle - initialMuscle;
+
+
+  const formatVariation =
+    value => {
+
+      if (!Number.isFinite(value)) {
+        return "—";
+      }
+
+      return `${
+        value > 0 ? "+" : ""
+      }${value.toFixed(1)}`;
+
+    };
+
+
+  let evolutionMessage =
+    "Não há dados suficientes para gerar uma análise automática.";
+
+
+  if (
+    Number.isFinite(initialWeight) &&
+    Number.isFinite(currentWeight) &&
+    Number.isFinite(initialFat) &&
+    Number.isFinite(currentFat) &&
+    Number.isFinite(initialMuscle) &&
+    Number.isFinite(currentMuscle)
+  ) {
+
+    const weightText =
+      weightDiff === 0
+        ? "O peso permaneceu estável"
+        : weightDiff < 0
+          ? `Houve redução de ${Math.abs(weightDiff).toFixed(1)} kg no peso`
+          : `Houve aumento de ${weightDiff.toFixed(1)} kg no peso`;
+
+
+    const fatText =
+      fatDiff === 0
+        ? "A gordura corporal permaneceu estável"
+        : fatDiff < 0
+          ? `a gordura corporal reduziu ${Math.abs(fatDiff).toFixed(1)} pontos percentuais`
+          : `a gordura corporal aumentou ${fatDiff.toFixed(1)} pontos percentuais`;
+
+
+    const muscleText =
+      muscleDiff === 0
+        ? "a massa muscular permaneceu estável"
+        : muscleDiff > 0
+          ? `a massa muscular aumentou ${muscleDiff.toFixed(1)} kg`
+          : `a massa muscular reduziu ${Math.abs(muscleDiff).toFixed(1)} kg`;
+
+
+    let conclusion =
+      "";
+
+
+    if (
+      fatDiff < 0 &&
+      muscleDiff > 0
+    ) {
+
+      conclusion =
+        "Esse conjunto de resultados indica uma evolução positiva da composição corporal, com redução de gordura e aumento de massa muscular.";
+
+    } else if (
+      fatDiff < 0 &&
+      muscleDiff === 0
+    ) {
+
+      conclusion =
+        "Os dados indicam uma evolução favorável, principalmente pela redução da gordura corporal.";
+
+    } else if (
+      fatDiff > 0 &&
+      muscleDiff > 0
+    ) {
+
+      conclusion =
+        "Houve aumento simultâneo de gordura corporal e massa muscular. A interpretação deve considerar o objetivo do aluno e o contexto do treinamento.";
+
+    } else if (
+      fatDiff > 0 &&
+      muscleDiff < 0
+    ) {
+
+      conclusion =
+        "Os dados indicam necessidade de atenção à evolução da composição corporal, com aumento de gordura e redução de massa muscular.";
+
+    } else {
+
+      conclusion =
+        "Os resultados apresentam alterações na composição corporal que devem ser avaliadas em conjunto com o objetivo e o histórico do aluno.";
+
+    }
+
+
+    evolutionMessage = `
+      <p>
+        <strong>Peso:</strong>
+        ${weightText}.
+        Variação:
+        ${formatVariation(weightDiff)} kg.
+      </p>
+
+      <p>
+        <strong>Gordura corporal:</strong>
+        ${fatText}.
+        Variação:
+        ${formatVariation(fatDiff)} p.p.
+      </p>
+
+      <p>
+        <strong>Massa muscular:</strong>
+        ${muscleText}.
+        Variação:
+        ${formatVariation(muscleDiff)} kg.
+      </p>
+
+      <p>
+        <strong>Interpretação:</strong>
+        ${conclusion}
+      </p>
+    `;
+
+  }
 
   /* =========================================================
      MEDIDAS CORPORAIS
